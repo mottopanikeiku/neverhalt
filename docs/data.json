@@ -3,5 +3,5 @@
  "bb4_pct": "99.73",
  "bb4_left": "1,649",
  "lean_line": "lean-eval (official comparator): 3 sanity problems solved and accepted. Real problems: free-form, 0 of 22 samples produced Lean; with constrained output on Catalan, 25 of 32 candidates parse clean and error feedback lifts the parse rate from 62.5% to 87.5%, best attempt 1 error, no real solve yet.",
- "updated_at": "21:27 PT, 13 Nov 2026"
+ "updated_at": "21:29 PT, 13 Nov 2026"
 }
