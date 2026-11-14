@@ -43,6 +43,8 @@
     .navigation .repo-link { color: var(--acid); border: 1px solid #4a5c3c; padding: 12px 14px; border-radius: 3px; }
     .hero { position: relative; padding: 75px 0 54px; }
     .hero::before { content: ""; position: absolute; pointer-events: none; z-index: -1; inset: 0 -45px -15px 20%; background: radial-gradient(ellipse at 70% 20%, #ddf7a40a, transparent 64%); }
+    .hero-art { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; opacity: .34; pointer-events: none; mask-image: linear-gradient(100deg, transparent 25%, #000 100%); }
+    .hero > :not(.hero-art) { position: relative; z-index: 1; }
     .eyebrow { display: flex; align-items: center; gap: 10px; color: var(--muted); font: 11px/1.6 var(--mono); letter-spacing: .15em; text-transform: uppercase; }
     .proof-dot { width: 6px; height: 6px; background: var(--acid); flex: 0 0 auto; box-shadow: 0 0 12px #ddf7a426; }
     .hero .eyebrow { color: #b4c5a2; }
@@ -92,7 +94,7 @@
     .progress-card { border: 1px solid #3c4e35; border-radius: 5px; padding: 31px 32px 28px; background: linear-gradient(115deg, #ddf7a40a, #8cf0bc03 75%); }
     .progress-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 24px; margin-bottom: 26px; }
     .progress-number { color: var(--acid); font: 400 clamp(48px, 5.5vw, 76px)/1 var(--sans); font-variant-numeric: tabular-nums; letter-spacing: -.065em; }
-    .progress-number span { font-size: .49em; margin-left: 3px; }
+    .progress-number .percent-sign { font-size: .49em; margin-left: 3px; }
     .progress-caption { color: #b5c4a9; font-size: 20px; line-height: 1.5; }
     .progress-track { height: 16px; background: #303c30; border-radius: 1px; overflow: hidden; }
     .progress-fill { width: 99.73%; height: 100%; background: linear-gradient(90deg, #80d5ac, #ddf7a4); }
@@ -122,6 +124,8 @@
     .footer { margin-top: 51px; padding: 26px 0 34px; border-top: 1px solid var(--line); color: #81977a; font: 11px/1.9 var(--mono); letter-spacing: .015em; overflow-wrap: anywhere; }
     .footer strong { color: #c9d8bc; font-weight: 500; }
     .footer a { color: var(--acid); text-decoration-color: #ddf7a455; }
+    .updated-stamp { display: block; margin-top: 10px; color: #73896c; font-size: 10px; letter-spacing: .08em; }
+    [hidden] { display: none !important; }
     @media (min-width: 1600px) {
       .container { width: min(1340px, calc(100% - 128px)); }
       .hero { padding-top: 88px; }
@@ -154,6 +158,7 @@
       .navigation .repo-link { padding: 9px 10px; font-size: 9px; letter-spacing: .05em; }
       .hero { padding-top: 46px; padding-bottom: 34px; }
       .hero::before { inset: 0 0 0 0; }
+      .hero-art { opacity: .2; }
       .hero .eyebrow { font-size: 9px; letter-spacing: .12em; gap: 8px; }
       .hero h1 { margin-top: 24px; font-size: clamp(49px, 15.1vw, 85px); letter-spacing: -.06em; }
       .hero-subtitle { margin-top: 22px; font-size: 19px; line-height: 1.55; }
@@ -215,10 +220,11 @@
 <body id="top">
   <header class="masthead container">
     <a class="brand" href="#top" aria-label="NEVERHALT, proof of never"><span class="wordmark">NEVER<span>HALT</span></span><span class="tagline">proof of never</span></a>
-    <nav class="navigation" aria-label="Main navigation"><a class="section-link" href="#bb3">THE PROOF</a><a class="section-link" href="#bb4">THE FRONTIER</a><a class="repo-link" href="https://github.com/REPO">CODE + RUNS ↗</a></nav>
+    <nav class="navigation" aria-label="Main navigation"><a class="section-link" href="#bb3">THE PROOF</a><a class="section-link" href="#bb4">THE FRONTIER</a><a class="repo-link" href="https://github.com/mottopanikeiku/neverhalt">CODE + RUNS ↗</a></nav>
   </header>
   <main class="container">
     <section class="hero" aria-labelledby="hero-title">
+      <canvas class="hero-art" id="hero-art" aria-hidden="true"></canvas>
       <div class="eyebrow"><span class="proof-dot" aria-hidden="true"></span>A MACHINE-CHECKED BUSY BEAVER RESULT</div>
       <h1 id="hero-title">BB(3) = <span class="answer">21</span> <span class="qed">∎</span></h1>
       <p class="hero-subtitle">Proven end to end by code Ripple-65B wrote. Every step checked by a 158-line kernel.</p>
@@ -268,7 +274,7 @@ BB(3) = 21 ∎</code></pre>
     <section class="chapter frontier" id="bb4" aria-labelledby="bb4-title">
       <div class="chapter-heading"><div><div class="eyebrow">BB(4)</div><h2 id="bb4-title">Still hunting.</h2></div><span class="chapter-badge live-badge"><span class="live-dot" aria-hidden="true"></span>IN PROGRESS</span></div>
       <div class="progress-card">
-        <div class="progress-heading"><div class="progress-number">99.73<span>%</span></div><p class="progress-caption">607,565 of 609,214 holdouts proven</p></div>
+        <div class="progress-heading"><div class="progress-number"><span data-k="bb4_pct">99.73</span><span class="percent-sign">%</span></div><p class="progress-caption"><span data-k="bb4_proven">607,565</span> of 609,214 holdouts proven</p></div>
         <div class="progress-track" role="progressbar" aria-label="BB(4) holdouts proven" aria-valuemin="0" aria-valuemax="100" aria-valuenow="99.73" aria-valuetext="607,565 of 609,214 holdouts proven"><div class="progress-fill"></div></div>
         <div class="progress-ends"><span>KERNEL-VERIFIED CERTIFICATES</span><span>THE FRONTIER REMAINS OPEN</span></div>
       </div>
@@ -276,7 +282,7 @@ BB(3) = 21 ∎</code></pre>
         <li><span class="list-dot" aria-hidden="true"></span><span>588,654 from Ripple's first decider (48 s)</span></li>
         <li><span class="list-dot" aria-hidden="true"></span><span>+5,213 after the harness fed crash errors back and Ripple fixed its closed-set code</span></li>
         <li><span class="list-dot" aria-hidden="true"></span><span>+13,702 by running the BB(3) decider unchanged on BB(4) — code written for 3 states carried over to 4</span></li>
-        <li><span class="list-dot" aria-hidden="true"></span><span>1,649 left — Ripple is attacking them right now on a dedicated 2× B200 endpoint</span></li>
+        <li><span class="list-dot" aria-hidden="true"></span><span><span data-k="bb4_left">1,649</span> left — Ripple is attacking them right now on a dedicated 2× B200 endpoint</span></li>
       </ul>
     </section>
 
@@ -301,7 +307,7 @@ BB(3) = 21 ∎</code></pre>
 
     <section class="chapter lean" aria-labelledby="lean-title">
       <div class="chapter-heading"><div><div class="eyebrow">LEAN / FORMAL PROOFS</div><h2 id="lean-title">Beyond the machine.</h2></div></div>
-      <div class="lean-panel"><p>lean-eval (Lean FRO benchmark, official comparator): 3 sanity problems solved and accepted; real problems: free-form 0 of 22 samples produced Lean (runaway reasoning); with constrained output, the first batch had 6 of 8 produce Lean, 5 parse clean, the best down to 1 error. A live loop on 2× B200 continues; we track parse rate, unsolved-goal rate and solves per refinement round.</p></div>
+      <div class="lean-panel"><p data-k="lean_line">lean-eval (Lean FRO benchmark, official comparator): 3 sanity problems solved and accepted; real problems: free-form 0 of 22 samples produced Lean (runaway reasoning); with constrained output, the first batch had 6 of 8 produce Lean, 5 parse clean, the best down to 1 error. A live loop on 2× B200 continues; we track parse rate, unsolved-goal rate and solves per refinement round.</p></div>
     </section>
 
     <section class="honest-notes" aria-labelledby="notes-title">
@@ -313,6 +319,140 @@ BB(3) = 21 ∎</code></pre>
       </ul>
     </section>
   </main>
-  <footer class="footer container"><strong>NEVERHALT</strong> · Ricursive After Dark hackathon · code and every run: <a href="https://github.com/REPO">https://github.com/REPO</a></footer>
+  <footer class="footer container"><strong>NEVERHALT</strong> · Ricursive After Dark hackathon · code and every run: <a href="https://github.com/mottopanikeiku/neverhalt">https://github.com/mottopanikeiku/neverhalt</a><span class="updated-stamp" id="updated-stamp" hidden>RESULTS UPDATED <span data-k="updated_at">—</span></span></footer>
+  <script>
+    (() => {
+      'use strict';
+
+      // Inline results are the offline fallback. Only this same-folder snapshot is fetched.
+      async function updateResults() {
+        try {
+          const response = await fetch('data.json', { cache: 'no-store' });
+          if (!response.ok) return;
+          const data = await response.json();
+          if (!data || typeof data !== 'object') return;
+          for (const key of ['bb4_proven', 'bb4_pct', 'bb4_left', 'lean_line', 'updated_at']) {
+            const value = data[key];
+            if ((typeof value !== 'string' && typeof value !== 'number') || String(value).trim() === '') continue;
+            if (key === 'bb4_pct' && (!Number.isFinite(Number(value)) || Number(value) < 0 || Number(value) > 100)) continue;
+            document.querySelectorAll(`[data-k="${key}"]`).forEach(node => { node.textContent = String(value); });
+          }
+          const percent = Number(document.querySelector('[data-k="bb4_pct"]').textContent);
+          const progress = document.querySelector('.progress-track');
+          document.querySelector('.progress-fill').style.width = `${percent}%`;
+          progress.setAttribute('aria-valuenow', String(percent));
+          progress.setAttribute('aria-valuetext', document.querySelector('.progress-caption').textContent);
+          if (data.updated_at) document.getElementById('updated-stamp').hidden = false;
+        } catch (_) { /* An unavailable snapshot never removes the published results. */ }
+      }
+      updateResults();
+
+      // Decorative blank-tape simulations, not additional proof claims.
+      // Eight cached diagrams; a slow sweep on one canvas, paused when off screen.
+      const sources = [
+        '1RB1LA_1LA1RC_1LC1RA',
+        '1RB0LC_1RC1LB_1LA0RA',
+        '1RB1RB_1LC1RC_1RA0LB',
+        '1RB0LA_1RC1LA_1LD0RB_1LA1RD',
+        '1RB1LB_1RA0RB_0LC1LC',
+        '1RB0RC_1LA1RC_1RA0LB',
+        '1RB1RC_1LC0RD_1RD1LA_1LA1RC',
+        '0RB1LA_1RC1RB_1LD0LA_1LA1RD'
+      ];
+      const palette = ['#718278', '#8cf0bc', '#81baff', '#daa3ff'];
+      function diagram(source) {
+        const transitions = source.split('_').map(row => [0, 1].map(symbol => {
+          const transition = row.slice(symbol * 3, symbol * 3 + 3);
+          return { write: Number(transition[0]), move: transition[1] === 'L' ? -1 : 1, state: transition.charCodeAt(2) - 65 };
+        }));
+        const tape = new Set();
+        const rows = [];
+        let state = 0, head = 0, left = 0, right = 0;
+        for (let t = 0; t < 80; t++) {
+          rows.push({ ones: Array.from(tape), head });
+          const transition = transitions[state][tape.has(head) ? 1 : 0];
+          if (transition.write) tape.add(head); else tape.delete(head);
+          head += transition.move;
+          state = transition.state;
+          left = Math.min(left, head);
+          right = Math.max(right, head);
+        }
+        const width = right - left + 3;
+        const alpha = new Uint8Array(width * rows.length);
+        rows.forEach((row, y) => {
+          for (const x of row.ones) alpha[y * width + x - left + 1] = 215;
+          const cursor = y * width + row.head - left + 1;
+          alpha[cursor] = alpha[cursor] ? 255 : 75;
+        });
+        return palette.map(color => {
+          const raster = document.createElement('canvas');
+          raster.width = width;
+          raster.height = rows.length;
+          const image = new ImageData(width, rows.length);
+          const red = parseInt(color.slice(1, 3), 16);
+          const green = parseInt(color.slice(3, 5), 16);
+          const blue = parseInt(color.slice(5, 7), 16);
+          for (let i = 0; i < alpha.length; i++) {
+            image.data[i * 4] = red;
+            image.data[i * 4 + 1] = green;
+            image.data[i * 4 + 2] = blue;
+            image.data[i * 4 + 3] = alpha[i];
+          }
+          raster.getContext('2d', { willReadFrequently: true }).putImageData(image, 0, 0);
+          return raster;
+        });
+      }
+      const rasters = sources.map(diagram);
+      const canvas = document.getElementById('hero-art');
+      const context = canvas.getContext('2d');
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      let width = 1, height = 1, scale = 1, animation = 0, lastPaint = 0, visible = false;
+      function draw(now) {
+        context.setTransform(scale, 0, 0, scale, 0, 0);
+        context.clearRect(0, 0, width, height);
+        context.imageSmoothingEnabled = false;
+        const columns = Math.max(1, Math.ceil(width / 53));
+        const rows = Math.max(1, Math.ceil(height / 61));
+        const cellWidth = width / columns;
+        const cellHeight = height / rows;
+        const wave = (now % 10500) / 10500 * 1.4 - .2;
+        for (let row = 0; row < rows; row++) {
+          for (let column = 0; column < columns; column++) {
+            const index = (column * 5 + row * 7) % rasters.length;
+            const distance = wave - (column / columns * .73 + row / rows * .27);
+            const glow = Math.max(0, 1 - Math.abs(distance) / .09);
+            const color = distance > 0 ? 1 + (column + row) % 3 : 0;
+            context.globalAlpha = (distance > 0 ? .7 : .32) + glow * .25;
+            context.drawImage(rasters[index][color], column * cellWidth + 3, row * cellHeight + 3, cellWidth - 6, cellHeight - 6);
+            if (glow > 0) {
+              context.globalAlpha = glow * .22;
+              context.fillStyle = palette[1 + (column + row) % 3];
+              context.fillRect(column * cellWidth + 3, row * cellHeight + 3, cellWidth - 6, cellHeight - 6);
+            }
+          }
+        }
+        context.globalAlpha = 1;
+      }
+      function animate(now) {
+        animation = 0;
+        if (!visible || reducedMotion) return;
+        if (now - lastPaint > 85) { draw(now); lastPaint = now; }
+        animation = requestAnimationFrame(animate);
+      }
+      new ResizeObserver(() => {
+        width = canvas.clientWidth;
+        height = canvas.clientHeight;
+        scale = Math.min(1.5, window.devicePixelRatio || 1);
+        canvas.width = Math.max(1, Math.round(width * scale));
+        canvas.height = Math.max(1, Math.round(height * scale));
+        draw(reducedMotion ? 6000 : performance.now());
+      }).observe(document.querySelector('.hero'));
+      new IntersectionObserver(entries => {
+        visible = entries[0].isIntersecting;
+        if (visible && !reducedMotion && !animation) animation = requestAnimationFrame(animate);
+        else if (!visible && animation) { cancelAnimationFrame(animation); animation = 0; }
+      }).observe(canvas);
+    })();
+  </script>
 </body>
 </html>
