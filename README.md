@@ -28,17 +28,18 @@ samples in 229 s for $0.06; sample 67's 295-line decider alone proves all 37.
 | `bb3-scale-json` | last 37 of BB(3), 8 parallel samples, JSON-constrained replies | 37 | 0: **14 of 14 samples wrote code** (300–2,900 tokens, no runaway thinking), but none proved one of the 37 within the 15-minute window | 37 | 14 · $0.009 |
 | `bb4-ripple-2` | BB(4), resumed from `bb4-ripple` | 20,569 | **+5,213 closed-set proofs** in round 7, from a decider Ripple fixed after the smoke test sent back its crashes; total **593,858 of 609,214 (97.5%)** | 15,356 | 20 · $0.093 |
 | `bb4-scale-json` | the 15,356 BB(4) left, 6 parallel JSON-constrained samples | 15,356 | +2 (translated cycles) in 15 min; each sample's decider takes 4–5 min of CPU to run on 15k machines; total **593,860** | 15,354 | 6 · $0.004 |
+| `bb4-transfer` → `bb4-transfer-2` | the 15,351 BB(4) left, **Ripple's BB(3) decider (sample 67) run unchanged** | 15,351 | **+13,702 closed-set proofs** (13,565 at 0.5 s per machine, 137 more at 3 s): code written for 3 states carried over to 4; total **607,565 of 609,214 (99.73%)** | 1,649 | 0 (no new model calls) |
 
-**Receipts.** `python3 -m neverhalt check bb4-ripple-2` enumerates all 858,907 four-state machines again and
-re-verifies **all 593,858** certificates (87,754 cycle, 500,891 translated cycle, 5,213 closed-set) in 11 s.
-`check bb4-ripple` accepts all 588,654 from round 1; `check bb3-ripple-2` accepts all 3,606.
+**Receipts.** `python3 -m neverhalt check bb4-transfer-2` enumerates all 858,907 four-state machines again and
+re-verifies **all 607,565** certificates (87,754 cycle, 500,896 translated cycle, 18,915 closed-set). `check
+bb3-scale-hints` proves BB(3) = 21 ∎. Website: https://mottopanikeiku.github.io/neverhalt/
 
 **Live during the presentation.** Parallel Ripple loops keep running. Their pages auto-refresh, and
 certificates are checkpointed after every sample (`check` works at any moment):
 - `runs/bb3-scale-hints/live.html`: the loop that closed BB(3) (finished).
-- `runs/bb4-transfer`: sample 67's BB(3) decider applied unchanged to the 15,351 open BB(4) machines.
-- `runs/bb4-scale-dedicated/live.html`: parallel Ripple samples on what BB(4) has left, on the dedicated endpoint.
-- `~/lean-eval-work/ripple/results/live.html`: JSON-constrained Lean proof writing with error feedback.
+- `runs/bb4-transfer-2`: sample 67's BB(3) decider applied unchanged to BB(4): 99.73%.
+- `runs/bb4-scale-dedicated/live.html`: 24 parallel Ripple samples on the last 1,649 BB(4) machines, on a dedicated 2× B200 Together endpoint.
+- `~/lean-eval-work/ripple/results/live.html`: JSON-constrained Lean proof writing with error feedback. First phase on Catalan: 25 of 32 candidates parse clean, and the parse rate rises from 62.5% in round 1 to 87.5% after error feedback, best attempt 1 error, 0 solves so far.
 - Stop: `pkill -f "neverhalt scale"`.
 
 **What Ripple did well.** On its first try it wrote correct cycle and translated-cycle deciders that run at
@@ -149,7 +150,7 @@ Setup before going on stage: the gallery plays `bb4-ripple`
 | 1:00 | Wall lights up, counter falls to 20,560. | "One decider, 48 seconds: 588,654 machines proven to run forever. Zero rejected." |
 | 1:30 | Terminal: `python3 -m neverhalt check bb4-ripple` (13 s). | "Fresh enumeration of 858,907 machines and the kernel only, no model. Every certificate holds." |
 | 2:00 | Terminal: `python3 -m neverhalt check bb3-scale-hints` (2 s). | "And on three states it finished the job. The last 37 machines are counters and bouncers. We ran 70 Ripple samples in parallel, and sample 67 wrote a 295-line automata search that proves all 37. BB(3) = 21, every step a certificate from Ripple's code, checked from scratch. Cost: six cents." |
-| 2:30 | Click a dark BB(4) tile. | "On four states, 97.5% so far, and we're applying that same decider to what's left. Where it fails, we measured that too: reasoning that never ends, code that crashes, and in Lean, zero real proofs yet." |
+| 2:30 | Click a dark BB(4) tile. | "And then we took the decider it wrote for three states and ran it, unchanged, on four. It proved 13,702 more machines. BB(4) is at 99.73%, and Ripple is working on the last 1,649 right now on two B200s. Where it fails, we measured that too: reasoning that never ends, code that crashes, and in Lean, near-misses but no real proof yet." |
 | 2:50 | | "Ricursive is building systems that improve themselves. This is that loop with a ground truth: the agent grows its own toolbox, and mathematics has the last word." |
 
 ## Honest limits
