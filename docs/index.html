@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0d0e">
+  <meta name="description" content="BB(3) = 21. Proven end to end by code Ripple-65B wrote. Every step checked by a 158-line kernel.">
+  <title>NEVERHALT — BB(3) = 21 ∎</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a0d0e'/%3E%3Cpath d='M8 24V8h4l8 12V8h4v16h-4L12 12v12z' fill='%23ddf7a4'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0a0d0e;
+      --panel: #101615;
+      --ink: #edf0e8;
+      --muted: #96a69a;
+      --quiet: #718476;
+      --line: #2a3730;
+      --acid: #ddf7a4;
+      --mint: #8cf0bc;
+      --blue: #81baff;
+      --violet: #daa3ff;
+      --mono: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      --sans: Arial, Helvetica, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 32px; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
+    ::selection { background: #ddf7a43b; color: #fff; }
+    a { color: inherit; text-underline-offset: 4px; }
+    a:focus-visible, video:focus-visible { outline: 2px solid var(--acid); outline-offset: 6px; }
+    img, video { max-width: 100%; }
+    figure, h1, h2, h3, p { margin: 0; }
+    .container { width: min(1248px, calc(100% - 96px)); margin-inline: auto; }
+    .masthead { min-height: 99px; display: flex; align-items: center; justify-content: space-between; gap: 24px; border-bottom: 1px solid var(--line); }
+    .brand { display: flex; align-items: baseline; gap: 18px; text-decoration: none; white-space: nowrap; }
+    .wordmark { font-size: 29px; font-weight: 900; letter-spacing: -.055em; }
+    .wordmark span { color: var(--acid); }
+    .tagline { color: #a9b8a3; font: italic 20px Georgia, "Times New Roman", serif; }
+    .navigation { display: flex; align-items: center; gap: 28px; font: 10px var(--mono); letter-spacing: .11em; }
+    .navigation a { color: var(--muted); text-decoration: none; transition: color 150ms ease; }
+    .navigation a:hover { color: var(--acid); }
+    .navigation .repo-link { color: var(--acid); border: 1px solid #4a5c3c; padding: 12px 14px; border-radius: 3px; }
+    .hero { position: relative; padding: 75px 0 54px; }
+    .hero::before { content: ""; position: absolute; pointer-events: none; z-index: -1; inset: 0 -45px -15px 20%; background: radial-gradient(ellipse at 70% 20%, #ddf7a40a, transparent 64%); }
+    .eyebrow { display: flex; align-items: center; gap: 10px; color: var(--muted); font: 11px/1.6 var(--mono); letter-spacing: .15em; text-transform: uppercase; }
+    .proof-dot { width: 6px; height: 6px; background: var(--acid); flex: 0 0 auto; box-shadow: 0 0 12px #ddf7a426; }
+    .hero .eyebrow { color: #b4c5a2; }
+    .hero h1 { margin-top: 25px; font: 400 clamp(70px, 11vw, 158px)/1.05 Georgia, "Times New Roman", serif; letter-spacing: -.058em; white-space: nowrap; }
+    .hero h1 .answer { color: var(--acid); }
+    .qed { display: inline-block; font-size: .47em; vertical-align: .07em; margin-left: .12em; color: var(--acid); }
+    .hero-subtitle { max-width: 770px; margin-top: 26px; color: #c1ccbc; font-size: clamp(20px, 1.7vw, 25px); line-height: 1.55; letter-spacing: -.015em; }
+    .stat-chips { display: grid; grid-template-columns: 1fr 1fr 1.12fr; gap: 13px; margin-top: 39px; }
+    .stat-chip { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 10px; padding: 21px 25px; border: 1px solid var(--line); border-radius: 4px; background: linear-gradient(130deg, #ddf7a406, #ddf7a401); color: #a1b39d; font-size: 14px; line-height: 1.35; }
+    .stat-chip strong { color: var(--ink); font: 30px var(--mono); letter-spacing: -.065em; font-variant-numeric: tabular-nums; }
+    .stat-chip:nth-child(2) strong { color: var(--mint); }
+    .stat-chip:nth-child(3) strong { color: var(--acid); }
+    .video-section { padding-top: 12px; }
+    .section-topline { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 16px; }
+    .section-topline .eyebrow { color: #b4c0ac; }
+    .micro-label { font: 10px/1.5 var(--mono); color: var(--quiet); letter-spacing: .09em; white-space: nowrap; }
+    .film { border: 1px solid #354332; border-radius: 5px; overflow: hidden; background: #0b110e; box-shadow: 0 22px 80px #0003; }
+    .film video { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: contain; background: radial-gradient(ellipse at center, #1a2820, #0a0e0b 75%); }
+    .video-caption { display: flex; align-items: flex-start; gap: 12px; padding: 18px 1px 0; color: #a5b69f; font-size: 15px; line-height: 1.6; }
+    .video-caption::before { content: "↳"; color: var(--acid); font: 18px var(--mono); flex: 0 0 auto; }
+    .chapter { margin-top: 96px; padding-top: 34px; border-top: 1px solid var(--line); }
+    .chapter-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 32px; }
+    .chapter h2 { margin-top: 15px; font: 400 clamp(33px, 3.5vw, 49px)/1.13 Georgia, "Times New Roman", serif; letter-spacing: -.035em; }
+    .chapter-badge { flex: 0 0 auto; padding: 9px 11px; border: 1px solid #4b6040; color: var(--acid); border-radius: 3px; font: 10px/1.4 var(--mono); letter-spacing: .08em; }
+    .pipeline { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; }
+    .pipeline li { min-width: 0; border-top: 1px solid #4b5b41; padding-top: 23px; }
+    .step-number { display: block; color: #64775b; font: 40px Georgia, "Times New Roman", serif; letter-spacing: -.05em; margin-bottom: 19px; }
+    .pipeline p { color: #becab6; font-size: 16px; line-height: 1.7; }
+    .pipeline code { color: var(--acid); font: 12px/1.8 var(--mono); overflow-wrap: anywhere; }
+    .result-story { max-width: 1120px; color: #d1dcc8; font-size: clamp(19px, 1.65vw, 24px); line-height: 1.65; letter-spacing: -.015em; }
+    .result-story strong { font-weight: 500; color: var(--acid); }
+    .audit { margin-top: 25px; padding: 14px 18px; border-left: 2px solid #8cf0bc70; background: #8cf0bc06; color: #97b098; font-size: 14px; line-height: 1.7; }
+    .curve { background: #0b0f14; border: 1px solid #29372f; border-radius: 4px; overflow: hidden; }
+    .closing-curve { width: min(100%, 1000px); margin: 33px auto 0; }
+    .curve-label { padding: 18px 23px 0; color: #a6b89d; font: 10px/1.5 var(--mono); letter-spacing: .11em; }
+    .curve img { display: block; width: 100%; height: auto; }
+    .curve figcaption { padding: 0 23px 18px; color: #778d78; font: 10px/1.5 var(--mono); letter-spacing: .05em; }
+    .terminal { margin-top: 30px; border: 1px solid #344a36; border-radius: 5px; overflow: hidden; background: #0b120e; }
+    .terminal-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 20px; border-bottom: 1px solid #293c2b; color: #8eab85; font: 10px/1.5 var(--mono); letter-spacing: .11em; }
+    .terminal-title { display: flex; align-items: center; gap: 12px; }
+    .terminal-mark { display: inline-block; width: 6px; height: 6px; background: var(--mint); box-shadow: 0 0 8px #8cf0bc30; }
+    .terminal pre { margin: 0; padding: 23px 24px; color: #c8e5ba; font: 12px/2 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 4; }
+    .terminal code { font: inherit; }
+    .frontier .chapter-heading { margin-bottom: 27px; }
+    .live-badge { color: var(--blue); border-color: #81baff40; display: flex; align-items: center; gap: 8px; }
+    .live-dot { display: inline-block; width: 5px; height: 5px; flex: 0 0 auto; border-radius: 50%; background: currentColor; }
+    .progress-card { border: 1px solid #3c4e35; border-radius: 5px; padding: 31px 32px 28px; background: linear-gradient(115deg, #ddf7a40a, #8cf0bc03 75%); }
+    .progress-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 24px; margin-bottom: 26px; }
+    .progress-number { color: var(--acid); font: 400 clamp(48px, 5.5vw, 76px)/1 var(--sans); font-variant-numeric: tabular-nums; letter-spacing: -.065em; }
+    .progress-number span { font-size: .49em; margin-left: 3px; }
+    .progress-caption { color: #b5c4a9; font-size: 20px; line-height: 1.5; }
+    .progress-track { height: 16px; background: #303c30; border-radius: 1px; overflow: hidden; }
+    .progress-fill { width: 99.73%; height: 100%; background: linear-gradient(90deg, #80d5ac, #ddf7a4); }
+    .progress-ends { display: flex; justify-content: space-between; gap: 16px; margin-top: 12px; color: #7f9575; font: 9px/1.5 var(--mono); letter-spacing: .09em; }
+    .breakdown { list-style: none; padding: 0; margin: 25px 0 0; }
+    .breakdown li { display: flex; align-items: flex-start; gap: 15px; padding: 17px 3px; border-bottom: 1px solid #243028; color: #bacbb2; font-size: 17px; line-height: 1.65; }
+    .breakdown .list-dot { width: 5px; height: 5px; margin-top: 11px; background: var(--mint); flex: 0 0 auto; }
+    .breakdown li:last-child { color: #b3c9e5; border-bottom: 0; }
+    .breakdown li:last-child .list-dot { background: var(--blue); }
+    .scaling-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); align-items: start; gap: 29px; }
+    .scaling-table { width: 100%; border-collapse: collapse; font-size: 15px; line-height: 1.6; }
+    .scaling-table th { padding: 0 18px 13px 0; text-align: left; font: 10px/1.5 var(--mono); color: #77916f; letter-spacing: .1em; border-bottom: 1px solid #425438; }
+    .scaling-table td { padding: 21px 19px 21px 0; vertical-align: top; border-bottom: 1px solid #2b382d; color: #b4c3aa; }
+    .scaling-table th:first-child, .scaling-table td:first-child { width: 43%; }
+    .scaling-table th:last-child, .scaling-table td:last-child { padding-right: 0; }
+    .scaling-table td:last-child { color: #d4e4c5; }
+    .scaling-table strong { color: var(--acid); font-weight: 500; }
+    .small-curve .curve-label { padding: 16px 17px 0; font-size: 9px; }
+    .small-curve figcaption { padding: 0 17px 15px; font-size: 9px; }
+    .lean-panel { padding: 29px 32px; border: 1px solid #daa3ff2b; border-radius: 5px; background: linear-gradient(110deg, #daa3ff08, transparent); }
+    .lean-panel p { max-width: 1110px; color: #c7c6d3; font-size: 19px; line-height: 1.8; }
+    .lean .eyebrow { color: #b2a2c5; }
+    .honest-notes { margin-top: 75px; padding-top: 28px; border-top: 1px solid var(--line); }
+    .honest-notes h2 { font: 17px Georgia, "Times New Roman", serif; color: #c2cdba; }
+    .honest-notes ul { display: grid; grid-template-columns: 1.1fr .8fr 1fr; gap: 30px; list-style: none; padding: 0; margin: 19px 0 0; }
+    .honest-notes li { color: #81947d; font-size: 13px; line-height: 1.75; }
+    .footer { margin-top: 51px; padding: 26px 0 34px; border-top: 1px solid var(--line); color: #81977a; font: 11px/1.9 var(--mono); letter-spacing: .015em; overflow-wrap: anywhere; }
+    .footer strong { color: #c9d8bc; font-weight: 500; }
+    .footer a { color: var(--acid); text-decoration-color: #ddf7a455; }
+    @media (min-width: 1600px) {
+      .container { width: min(1340px, calc(100% - 128px)); }
+      .hero { padding-top: 88px; }
+      .hero h1 { font-size: 171px; }
+      .hero-subtitle { max-width: 830px; font-size: 27px; }
+    }
+    @media (max-width: 1000px) {
+      .container { width: calc(100% - 56px); }
+      .navigation { gap: 18px; }
+      .navigation .section-link { display: none; }
+      .hero { padding-top: 57px; }
+      .hero h1 { font-size: clamp(66px, 11.8vw, 118px); }
+      .stat-chip { padding: 20px; }
+      .stat-chip strong { font-size: 25px; }
+      .pipeline { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px 28px; }
+      .step-number { margin-bottom: 12px; }
+      .scaling-grid { grid-template-columns: 1fr; }
+      .small-curve { width: min(100%, 590px); }
+      .progress-heading { align-items: center; }
+      .progress-caption { max-width: 330px; font-size: 18px; }
+      .honest-notes ul { gap: 22px; }
+    }
+    @media (max-width: 600px) {
+      html { scroll-padding-top: 18px; }
+      .container { width: calc(100% - 40px); }
+      .masthead { min-height: 79px; gap: 12px; }
+      .brand { gap: 0; }
+      .wordmark { font-size: 25px; }
+      .tagline { display: none; }
+      .navigation .repo-link { padding: 9px 10px; font-size: 9px; letter-spacing: .05em; }
+      .hero { padding-top: 46px; padding-bottom: 34px; }
+      .hero::before { inset: 0 0 0 0; }
+      .hero .eyebrow { font-size: 9px; letter-spacing: .12em; gap: 8px; }
+      .hero h1 { margin-top: 24px; font-size: clamp(49px, 15.1vw, 85px); letter-spacing: -.06em; }
+      .hero-subtitle { margin-top: 22px; font-size: 19px; line-height: 1.55; }
+      .stat-chips { grid-template-columns: 1fr; gap: 9px; margin-top: 28px; }
+      .stat-chip { flex-direction: row; justify-content: flex-start; align-items: baseline; gap: 11px; padding: 17px 16px; font-size: 12px; }
+      .stat-chip strong { font-size: 24px; white-space: nowrap; }
+      .stat-chip:nth-child(3) strong { font-size: 21px; }
+      .section-topline { gap: 10px; margin-bottom: 12px; }
+      .section-topline .eyebrow { font-size: 9px; letter-spacing: .11em; }
+      .micro-label { font-size: 8px; }
+      .video-caption { font-size: 13px; gap: 10px; padding-top: 14px; }
+      .chapter { margin-top: 61px; padding-top: 25px; }
+      .chapter-heading { align-items: flex-start; gap: 12px; margin-bottom: 25px; }
+      .eyebrow { font-size: 9px; letter-spacing: .12em; }
+      .chapter h2 { font-size: 34px; margin-top: 12px; }
+      .chapter-badge { margin-top: 3px; font-size: 8px; padding: 7px 8px; letter-spacing: .04em; }
+      .pipeline { grid-template-columns: 1fr; gap: 24px; }
+      .pipeline li { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 17px; padding-top: 20px; }
+      .step-number { font-size: 32px; margin: 0; }
+      .pipeline p { font-size: 15px; line-height: 1.75; }
+      .pipeline code { font-size: 11px; }
+      .result-story { font-size: 19px; line-height: 1.65; }
+      .audit { margin-top: 23px; padding: 13px 15px; font-size: 13px; }
+      .closing-curve { margin-top: 25px; }
+      .curve-label { padding: 15px 14px 0; font-size: 8px; letter-spacing: .07em; }
+      .curve figcaption { padding: 0 14px 14px; font-size: 8px; }
+      .terminal { margin-top: 23px; }
+      .terminal-heading { padding: 12px 14px; font-size: 9px; letter-spacing: .05em; }
+      .terminal-heading .terminal-type { display: none; }
+      .terminal pre { padding: 17px 15px; font-size: 10.5px; line-height: 1.9; }
+      .progress-card { padding: 24px 20px 20px; }
+      .progress-heading { display: block; margin-bottom: 23px; }
+      .progress-number { font-size: 61px; }
+      .progress-caption { font-size: 17px; margin-top: 16px; }
+      .progress-track { height: 13px; }
+      .progress-ends { font-size: 8px; gap: 10px; letter-spacing: .04em; }
+      .breakdown { margin-top: 18px; }
+      .breakdown li { padding: 15px 0; font-size: 15px; gap: 12px; }
+      .breakdown .list-dot { margin-top: 10px; }
+      .scaling-grid { gap: 26px; }
+      .scaling-table { font-size: 13px; line-height: 1.65; }
+      .scaling-table th { font-size: 9px; letter-spacing: .07em; }
+      .scaling-table td { padding-top: 17px; padding-bottom: 17px; padding-right: 15px; }
+      .scaling-table th:first-child, .scaling-table td:first-child { width: 44%; }
+      .small-curve .curve-label { font-size: 8px; }
+      .lean-panel { padding: 20px 19px; }
+      .lean-panel p { font-size: 16px; line-height: 1.8; }
+      .honest-notes { margin-top: 53px; padding-top: 23px; }
+      .honest-notes ul { grid-template-columns: 1fr; gap: 14px; margin-top: 18px; }
+      .honest-notes li { font-size: 12px; line-height: 1.8; }
+      .footer { margin-top: 34px; padding-top: 23px; font-size: 10px; line-height: 2; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      * { transition: none !important; }
+    }
+  </style>
+</head>
+<body id="top">
+  <header class="masthead container">
+    <a class="brand" href="#top" aria-label="NEVERHALT, proof of never"><span class="wordmark">NEVER<span>HALT</span></span><span class="tagline">proof of never</span></a>
+    <nav class="navigation" aria-label="Main navigation"><a class="section-link" href="#bb3">THE PROOF</a><a class="section-link" href="#bb4">THE FRONTIER</a><a class="repo-link" href="https://github.com/REPO">CODE + RUNS ↗</a></nav>
+  </header>
+  <main class="container">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="eyebrow"><span class="proof-dot" aria-hidden="true"></span>A MACHINE-CHECKED BUSY BEAVER RESULT</div>
+      <h1 id="hero-title">BB(3) = <span class="answer">21</span> <span class="qed">∎</span></h1>
+      <p class="hero-subtitle">Proven end to end by code Ripple-65B wrote. Every step checked by a 158-line kernel.</p>
+      <div class="stat-chips" aria-label="Result at a glance">
+        <div class="stat-chip"><strong>5,415</strong> <span>machines enumerated</span></div>
+        <div class="stat-chip"><strong>3,643</strong> <span>proven never to halt</span></div>
+        <div class="stat-chip"><strong>$0.06 · 229 s</strong> <span>for the last 37</span></div>
+      </div>
+    </section>
+
+    <section class="video-section" aria-labelledby="video-title">
+      <div class="section-topline"><h2 class="eyebrow" id="video-title">THE INFINITY FIELD</h2><span class="micro-label">BB(4) / REPLAY</span></div>
+      <figure>
+        <div class="film"><video src="media/wall.mp4" autoplay muted loop playsinline controls aria-label="NEVERHALT gallery replaying the BB(4) run">Your browser cannot play this video. <a href="media/wall.mp4">Open the gallery replay.</a></video></div>
+        <figcaption class="video-caption">Ripple's first BB(4) decider: 588,654 of 609,214 machines proven in 48 s, zero rejected.</figcaption>
+      </figure>
+    </section>
+
+    <section class="chapter" aria-labelledby="method-title">
+      <div class="chapter-heading"><div><div class="eyebrow">THE METHOD</div><h2 id="method-title">An agent proposes.<br>A kernel decides.</h2></div></div>
+      <ol class="pipeline">
+        <li><span class="step-number" aria-hidden="true">01</span><p>Enumerate every 3- and 4-state Turing machine; the ones that haven't halted after 300 steps are holdouts.</p></li>
+        <li><span class="step-number" aria-hidden="true">02</span><p>Ripple sees space-time diagrams and writes a decider program; it runs sandboxed (no network, read-only).</p></li>
+        <li><span class="step-number" aria-hidden="true">03</span><p>A trusted kernel checks every certificate (cycle or closed set over finite automata); a wrong one is rejected, a missing one leaves a dark tile.</p></li>
+        <li><span class="step-number" aria-hidden="true">04</span><p>No holdouts left means a theorem, re-checkable by anyone: <code>python3 -m neverhalt check &lt;run&gt;</code>.</p></li>
+      </ol>
+    </section>
+
+    <section class="chapter" id="bb3" aria-labelledby="bb3-title">
+      <div class="chapter-heading"><div><div class="eyebrow">BB(3)</div><h2 id="bb3-title">A finite proof of never.</h2></div><span class="chapter-badge">THEOREM CLOSED</span></div>
+      <p class="result-story"><strong>3,551 in round 1</strong> (one decider) → <strong>+55 closed-set proofs</strong> → the last 37 counters and bouncers fell to 70 parallel Ripple samples; sample 67 wrote a 295-line automata search that proves all 37 alone.</p>
+      <p class="audit">The contributing deciders import only the simulator, the kernel and the Python standard library — no reference code, no files.</p>
+      <figure class="curve closing-curve">
+        <div class="curve-label">UNPROVEN MACHINES / SAMPLES</div>
+        <img src="media/bb3-closing-curve.svg" width="720" height="360" loading="lazy" decoding="async" alt="Unproven machines versus samples for the run that closed BB(3)">
+        <figcaption>BB(3) · THE CLOSING RUN</figcaption>
+      </figure>
+      <div class="terminal" aria-label="Independent verification output">
+        <div class="terminal-heading"><span class="terminal-title"><span class="terminal-mark" aria-hidden="true"></span>RE-CHECK THE THEOREM</span><span class="terminal-type">PYTHON / TRUSTED KERNEL</span></div>
+        <pre><code>$ python3 -m neverhalt check bb3-scale-hints
+5415 machines enumerated from scratch · 1772 halt (longest: 21 steps, 1RB---_1LB0RC_1LC1LA) · 3643 holdouts
+certificates accepted by the kernel: {'cycle': 526, 'tcycle': 3025, 'cps': 92}
+BB(3) = 21 ∎</code></pre>
+      </div>
+    </section>
+
+    <section class="chapter frontier" id="bb4" aria-labelledby="bb4-title">
+      <div class="chapter-heading"><div><div class="eyebrow">BB(4)</div><h2 id="bb4-title">Still hunting.</h2></div><span class="chapter-badge live-badge"><span class="live-dot" aria-hidden="true"></span>IN PROGRESS</span></div>
+      <div class="progress-card">
+        <div class="progress-heading"><div class="progress-number">99.73<span>%</span></div><p class="progress-caption">607,565 of 609,214 holdouts proven</p></div>
+        <div class="progress-track" role="progressbar" aria-label="BB(4) holdouts proven" aria-valuemin="0" aria-valuemax="100" aria-valuenow="99.73" aria-valuetext="607,565 of 609,214 holdouts proven"><div class="progress-fill"></div></div>
+        <div class="progress-ends"><span>KERNEL-VERIFIED CERTIFICATES</span><span>THE FRONTIER REMAINS OPEN</span></div>
+      </div>
+      <ul class="breakdown">
+        <li><span class="list-dot" aria-hidden="true"></span><span>588,654 from Ripple's first decider (48 s)</span></li>
+        <li><span class="list-dot" aria-hidden="true"></span><span>+5,213 after the harness fed crash errors back and Ripple fixed its closed-set code</span></li>
+        <li><span class="list-dot" aria-hidden="true"></span><span>+13,702 by running the BB(3) decider unchanged on BB(4) — code written for 3 states carried over to 4</span></li>
+        <li><span class="list-dot" aria-hidden="true"></span><span>1,649 left — Ripple is attacking them right now on a dedicated 2× B200 endpoint</span></li>
+      </ul>
+    </section>
+
+    <section class="chapter" aria-labelledby="scaling-title">
+      <div class="chapter-heading"><div><div class="eyebrow">TEST-TIME SCALING</div><h2 id="scaling-title">More chances. Better constraints.</h2></div></div>
+      <div class="scaling-grid">
+        <table class="scaling-table" aria-label="Test-time scaling results">
+          <thead><tr><th scope="col">REPLY FORMAT</th><th scope="col">OBSERVED RESULT</th></tr></thead>
+          <tbody>
+            <tr><td>free-form replies</td><td>0 of 9 samples wrote code (reasoning never stopped)</td></tr>
+            <tr><td>JSON-constrained replies</td><td><strong>14 of 14 wrote code</strong></td></tr>
+            <tr><td>with the automata technique in the prompt</td><td><strong>BB(3) closed after 70 samples ($0.062)</strong></td></tr>
+          </tbody>
+        </table>
+        <figure class="curve small-curve">
+          <div class="curve-label">UNPROVEN MACHINES / SAMPLES</div>
+          <img src="media/bb3-json-curve.svg" width="720" height="360" loading="lazy" decoding="async" alt="Unproven BB(3) machines across the JSON-constrained samples">
+          <figcaption>BB(3) · JSON-CONSTRAINED SAMPLES</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="chapter lean" aria-labelledby="lean-title">
+      <div class="chapter-heading"><div><div class="eyebrow">LEAN / FORMAL PROOFS</div><h2 id="lean-title">Beyond the machine.</h2></div></div>
+      <div class="lean-panel"><p>lean-eval (Lean FRO benchmark, official comparator): 3 sanity problems solved and accepted; real problems: free-form 0 of 22 samples produced Lean (runaway reasoning); with constrained output, the first batch had 6 of 8 produce Lean, 5 parse clean, the best down to 1 error. A live loop on 2× B200 continues; we track parse rate, unsolved-goal rate and solves per refinement round.</p></div>
+    </section>
+
+    <section class="honest-notes" aria-labelledby="notes-title">
+      <h2 id="notes-title">Honest notes</h2>
+      <ul>
+        <li>technique hints for the final BB(3) samples are disclosed and stored with the run;</li>
+        <li>Ripple via OpenRouter and a dedicated Together endpoint;</li>
+        <li>the "reverse-engineer the weave" side experiment did not converge (best 33% pixel accuracy).</li>
+      </ul>
+    </section>
+  </main>
+  <footer class="footer container"><strong>NEVERHALT</strong> · Ricursive After Dark hackathon · code and every run: <a href="https://github.com/REPO">https://github.com/REPO</a></footer>
+</body>
+</html>
