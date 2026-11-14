@@ -1,0 +1,112 @@
+Reverse-engineer this binary Turing-machine space-time weave. Find the SMALLEST
+machine whose blank-tape execution matches the target; maximize accuracy if impossible.
+Never assume the hidden machine is available: only the target is accessible.
+Notation: rows separated by _, one row per state A,B,...; each row has two
+3-character tokens for read=0 and read=1: write bit, L/R move, next state letter.
+Example notation only: 1RB0LA_0LA1RB. --- is undefined and halts. Start state A,
+head at cell 0, all-zero two-way infinite tape. 1 lights a pixel; 0 is dark.
+Row t is the binary tape AFTER t steps, starting with row 0 blank.
+Crop the candidate to ALL columns visited by the head in rows 0..H-1; do not
+truncate to target width. A halted machine's tape/head remain frozen. For each
+integer horizontal alignment, equal pixels in overlapping columns are correct;
+EVERY pixel in a non-overlapping column is wrong, even if it is blank. Accuracy
+is correct pixels / (H * number of columns in the union of the two crops).
+Take the best alignment. Ties: fewer declared states, then fewer defined
+transitions. Exact requires identical widths and ALL H rows, not just a crop.
+Sandbox: 90 seconds CPU, 1 GiB RAM, no network, read-only filesystem, Python
+standard library only. You may import neverhalt.tm and neverhalt.tnf. At most
+4 worker processes. Cached enumerate_tnf(n,2,300,Path('/tmp/neverhalt/cache'))
+exists for n=2,3,4. Note: its holdouts omit first-state self loops and some
+fully-defined machines, so do not rely on it as a complete search. First moves
+in cached TNF are R: also test mirrored machines/targets. Consider inferring
+writes from successive target rows and searching consistent transition tables;
+state names can be introduced in order of first use. Any choice of search is YOURS.
+The harness independently checks pixels, cycle proofs, and minimality. It does
+not trust your score. Return notes and exactly ONE python fenced block defining
+search(target: list[str]) -> str. Return the machine string, not a diagram.
+Optionally return {'tm': machine_string, 'certificate': {'kind':'cycle','t':T,'p':P}}.
+Do not call search at module import. Keep search inside the 90-second CPU budget.
+Target dimensions: 80 rows x 40 columns.
+TARGET:
+........................................
+.......................................#
+......................................##
+......................................#.
+......................................#.
+.....................................##.
+....................................###.
+....................................#.#.
+....................................#.#.
+...................................##.#.
+..................................###.#.
+..................................#.#.#.
+..................................#.#.#.
+.................................##.#.#.
+................................###.#.#.
+................................#.#.#.#.
+................................#.#.#.#.
+...............................##.#.#.#.
+..............................###.#.#.#.
+..............................#.#.#.#.#.
+..............................#.#.#.#.#.
+.............................##.#.#.#.#.
+............................###.#.#.#.#.
+............................#.#.#.#.#.#.
+............................#.#.#.#.#.#.
+...........................##.#.#.#.#.#.
+..........................###.#.#.#.#.#.
+..........................#.#.#.#.#.#.#.
+..........................#.#.#.#.#.#.#.
+.........................##.#.#.#.#.#.#.
+........................###.#.#.#.#.#.#.
+........................#.#.#.#.#.#.#.#.
+........................#.#.#.#.#.#.#.#.
+.......................##.#.#.#.#.#.#.#.
+......................###.#.#.#.#.#.#.#.
+......................#.#.#.#.#.#.#.#.#.
+......................#.#.#.#.#.#.#.#.#.
+.....................##.#.#.#.#.#.#.#.#.
+....................###.#.#.#.#.#.#.#.#.
+....................#.#.#.#.#.#.#.#.#.#.
+....................#.#.#.#.#.#.#.#.#.#.
+...................##.#.#.#.#.#.#.#.#.#.
+..................###.#.#.#.#.#.#.#.#.#.
+..................#.#.#.#.#.#.#.#.#.#.#.
+..................#.#.#.#.#.#.#.#.#.#.#.
+.................##.#.#.#.#.#.#.#.#.#.#.
+................###.#.#.#.#.#.#.#.#.#.#.
+................#.#.#.#.#.#.#.#.#.#.#.#.
+................#.#.#.#.#.#.#.#.#.#.#.#.
+...............##.#.#.#.#.#.#.#.#.#.#.#.
+..............###.#.#.#.#.#.#.#.#.#.#.#.
+..............#.#.#.#.#.#.#.#.#.#.#.#.#.
+..............#.#.#.#.#.#.#.#.#.#.#.#.#.
+.............##.#.#.#.#.#.#.#.#.#.#.#.#.
+............###.#.#.#.#.#.#.#.#.#.#.#.#.
+............#.#.#.#.#.#.#.#.#.#.#.#.#.#.
+............#.#.#.#.#.#.#.#.#.#.#.#.#.#.
+...........##.#.#.#.#.#.#.#.#.#.#.#.#.#.
+..........###.#.#.#.#.#.#.#.#.#.#.#.#.#.
+..........#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.
+..........#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.
+.........##.#.#.#.#.#.#.#.#.#.#.#.#.#.#.
+........###.#.#.#.#.#.#.#.#.#.#.#.#.#.#.
+........#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.
+........#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.
+.......##.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.
+......###.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.
+......#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.
+......#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.
+.....##.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.
+....###.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.
+....#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.
+....#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.
+...##.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.
+..###.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.
+..#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.
+..#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.
+.##.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.
+###.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.
+#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.
+Previous rounds:
+[{"round": 1, "error": "ValueError: expected one Python block; got 2", "accuracy": null, "states": null, "defined_transitions": null, "first_mismatching_rows": null, "minimality": null}, {"round": 2, "error": "ValueError: expected one Python block; got 0", "accuracy": null, "states": null, "defined_transitions": null, "first_mismatching_rows": null, "minimality": null}, {"round": 3, "error": "Harness interrupted its own in-flight request to adopt Main's 24000-token setting and same-round repair; no response recorded.", "accuracy": null, "states": null, "defined_transitions": null, "first_mismatching_rows": null, "minimality": null}, {"round": 4, "error": "RuntimeError: KeyError: 'search'", "accuracy": null, "states": null, "defined_transitions": null, "first_mismatching_rows": null, "minimality": null}]

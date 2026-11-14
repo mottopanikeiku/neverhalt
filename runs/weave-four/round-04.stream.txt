@@ -1,0 +1,1556 @@
+Looking at the pattern, this looks like a repeating diagonal ramp: the head walks right diagonally down-left, and every row adds a `#`, then alternates between a diagonal streak and a checkpoint pattern.
+
+Observing the rows, the visible `#` pattern combines a diagonal line moving left as `t` increases, plus a periodic "gadget" that is a small box shape repeated. Let me compute exact coordinates to identify the machine.
+
+Let me write a brute-force search over small transition tables consistent with the observed writes, then simulate all candidates and score.
+
+```python
+import sys
+from collections import defaultdict
+
+def parse(target):
+    return target
+
+def simulate(machine_str, H, W, max_steps=None):
+    # parse rows split by _
+    parts = machine_str.split('_')
+    # states A,B,C,... in order
+    strlen = len(parts)
+    def find_state(c):
+        return ord(c) - ord('A')
+    # tape
+    tape = defaultdict(int)
+    head = 0
+    T = 0
+    if strlen == 0:
+        pass
+    # simulate for H steps
+    out_rows = []
+    for t in range(H):
+        row = []
+        # row t is tape AFTER t steps? row 0 blank -> before any step
+        # Actually row t is after t steps; but they say row 0 blank, so row t = after t steps
+        # We record row t from tape at time t (after t steps), then take a step.
+        # Crop later. For now record infinite-ish tape.
+        row.append((t, dict(tape), head))
+        out_rows.append((dict(tape), head))
+        if t == H-1:
+            break
+        # step
+        st = None
+        # state tracking
+        # let's track state
+        break
+    return None
+
+# Simpler approach: track state explicitly
+def run(machine_str, H):
+    parts = machine_str.split('_')
+    nstates = len(parts)
+    # state index map
+    transitions = {}
+    for i, row in enumerate(parts):
+        if row == '--':
+            # halt state, 6 chars? we handle undefined
+            continue
+        # row must be 6 tokens? Actually "two 3-character tokens": so row length 6
+        if len(row) < 6:
+            continue
+        for r in (0,1):
+            tok = row[3*r:3*r+3]
+            if len(tok) < 3:
+                continue
+            w, mv, ns = tok[0], tok[1], tok[2]
+            if ns == '-':
+                # undefined
+                continue
+            si = ord(ns) - ord('A')
+            transitions[(i, r)] = (int(w), mv, si)
+    # start state A = 0
+    tape = defaultdict(int)
+    head = 0
+    state = 0
+    rows = []
+    for t in range(H+1):
+        rows.append((dict(tape), head))
+        if t == H:
+            break
+        r = tape[head]
+        if (state, r) not in transitions:
+            # halt
+            # fill rest with same tape
+            for _ in range(H-t):
+                rows.append((dict(tape), head))
+            break
+        w, mv, ns = transitions[(state, r)]
+        tape[head] = w
+        state = ns
+        if mv == 'R':
+            head += 1
+        elif mv == 'L':
+            head -= 1
+    return rows
+
+def crop(rows, H, W):
+    minh = min(head for _,head in rows)
+    maxh = max(head for _,head in rows)
+    coords = []
+    # For each row, store dict of positions
+    return rows
+
+def score_against_target(rows, target, H):
+    # rows: list of (tape dict, head) for t=0..H-1 (H rows)
+    # candidate crop: columns visited by head in rows 0..H-1
+    # We need union with target columns.
+    # Compute candidate visited positions across ALL rows? Actually crop to columns visited by head only.
+    visited_cols = set()
+    for t in range(H):
+        tape, head = rows[t]
+        visited_cols.add(head)
+    # But "crop to all columns visited by head" = columns of head positions? Or columns with any written pixel?
+    # Literal: "all columns visited by the head in rows 0..H-1"
+    # But pixels at columns other than head position matter for accuracy of tape.
+    # Hmm. The crop includes all columns the head visited, but other columns may have pixels.
+    # Actually accuracy: "equal pixels in overlapping columns are correct; EVERY pixel in a non-overlapping column is wrong"
+    # The candidate's tape is defined over infinite columns. The crop restricts to visited columns?
+    # We'll crop to union of head positions AND any nonzero pixel columns? Safer: crop to visited head columns.
+    # But target crop = union of target's ink columns? Target given as 40 columns. Hmm target H rows already given 80x40.
+    # Actually target provided as grid; target crop is that grid (80 rows x 40 cols).
+    # Union of the two crops: columns = union of candidate head columns and target columns (0..39)?
+    ...
+```
+
+This is getting unwieldy. Let me think structurally.
+
+The target pattern: Let me index columns 0..39 (40 columns), rows 0..79.
+
+Row 0: all blank.
+Row 1: col 39 `#`
+Row 2: cols 38,39
+Row 3: 37,38,39
+Row 4: cols 37 `#`, 39 `#`? Let me recount row 4: `.....................................#.#` — 37 dots then # . #. So cols 37 and 39.
+
+Wait count: 37 dots means positions 0..36 blank, position 37 is '#', position 38 is '.', position 39 is '#'. Length 40.
+
+Row 5: `.....................................#..` -> cols 37.
+
+Hmm this looks like the right boundary is around col 39-40 and the ink advances leftward over time with a diagonal staircase, plus a repeating small motif.
+
+Let me carefully transcribe first rows with column indices (0-based, 40 cols):
+
+Row 0: all 0.
+Row 1: `.......................................#` -> 39 dots + # => col 39.
+Row 2: `......................................##` -> cols 38,39.
+Row 3: `.....................................###` -> cols 37,38,39.
+Row 4: `.....................................#.#` -> cols 37,39.
+Row 5: `.....................................#..` -> col 37.
+Row 6: `.....................................##.` -> cols 37,38.
+Row 7: `......................................#.` -> col 38.
+Row 8: `....................................#.#.` -> col 36, col 38.
+Row 9: `...................................##.#.` -> cols 35,36,38.
+Row 10: `..................................###.#.` -> cols 34,35,36,38.
+Row 11: `.................................####.#.` -> cols 33..36, 38.
+Row 12: `.................................#.##.#.` -> cols 33, 35,36, 38.
+Row 13: `.................................#..#.#.` -> 33, 36, 38.
+Row 14: `.................................##.#.#.` -> 33,34,36,38.
+Row 15: `..................................#.#.#.` -> 34,36,38.
+Row 16: `................................#.#.#.#.` -> 32,34,36,38.
+Row 17: `...............................##.#.#.#.` -> 31,32,34,36,38.
+Row 18: `..............................###.#.#.#.` -> 30,31,32,34,36,38.
+Row 19: `.............................####.#.#.#.` -> 29-32,34,36,38.
+Row 20: `.............................#.##.#.#.#.` -> 29,31,32,34,36,38.
+Row 21: `.............................#..#.#.#.#.` -> 29,32,34,36,38.
+Row 22: `.............................##.#.#.#.#.` -> 29,30,32,34,36,38.
+Row 23: `..............................#.#.#.#.#.` -> 30,32,34,36,38.
+Row 24: `............................#.#.#.#.#.#.` -> 28,30,32,34,36,38.
+Row 25: `...........................##.#.#.#.#.#.` -> 27,28,30,...
+Row 26: `..........................###.#.#.#.#.#.` -> 26,27,28,...
+Row 27: `.........................####.#.#.#.#.#.` -> 25..28,...
+Row 28: `.........................#.##.#.#.#.#.#.` -> 25,27,28,...
+Row 29: `.........................#..#.#.#.#.#.#.` -> 25,28,...
+Row 30: `.........................##.#.#.#.#.#.#.` -> 25,26,28,...
+Row 31: `..........................#.#.#.#.#.#.#.` -> 26,28,...
+
+I see a pattern! The rightmost column ink is at even columns 38, then later the pattern shifts. Actually look: there's a series of vertical bars at even columns: 38, 36, 34, 32, 30, 28... spaced by 2, and each row shifts them left.
+
+Actually the pattern seems to be a periodic tile moving leftward. The visible rightmost # is at col 38 always? Row 1 col 39, row 2 col 39, row3 col 39, row4 col39. Then row5 no col39. Row 8 col38... Let me check rightmost ink column per row:
+
+Row 1: 39
+Row 2: 39
+Row 3: 39
+Row 4: 39
+Row 5: none(37)
+Row 6: 38
+Row 7: 38
+Row 8: 38
+Row 9: 38
+Row 10: 38
+Row 11: 38
+Row 12: 38
+Row 13: 38
+Row 14: 38
+Row 15: 38
+Row 16: 38
+Row 17: 38
+...
+Row 39: 38? Let me check last rows.
+
+Row 40 `..................#.#.#.#.#.#.#.#.#.#.#.`? Actually looking: rows continue with pattern.
+
+The target seems to be a repeating pattern of period ~? with a diagonal ramp.
+
+Honestly, blind reverse engineering 80 rows is hard manually. Let me just write a search.
+
+Given the structure — likely this is generated by a known small TM (probably a "neverhalt" turing machine tape pattern, given the import name). The user says consider inferring writes from successive target rows and searching consistent transition tables.
+
+Approach: We have target tape rows. A TM with state A,B,... and tape. Each step: at head position, read bit, write bit, move L/R, next state. The head position evolves deterministically. We don't observe head directly but can infer from changes: only the cell at head changes per step; neighbors' changes reveal moves... Actually consecutive rows differ at cells. Between row t and t+1, exactly one cell changes (at head at time t). And the next head is either same±1.
+
+So differences D_t = row_{t+1} XOR row_t is a singleton (one bit flip), at position p_t (head at time t). Then move is determined by comparing p_{t+1} to p_t: +1 => R, -1 => L, 0 => impossible (must move). Actually moves are one direction only (not S).
+
+So: p_t = position of the single difference between row t and t+1. Then mv_t = sign(p_{t+1} - p_t). Written bit = row_{t+1}[p_t].
+
+This gives us the entire "execution trace": for each time t, head position p_t, move, and written bit w_t, and read bit r_t = row_t[p_t]. But we don't know the state. The state is determined by the sequence of symbols (r) read. For a deterministic TM, cell content at position p_t read, transition depends on (state, r).
+
+We know r_t = row_t[p_t] (bit before write) and w_t = row_{t+1}[p_t] (bit after write). So transition: on input r_t, write w_t, move mv_t, go to next state.
+
+If we hypothesize a state assignment (a labeling of each time step t by a state s_t), we need: whenever s_t = s and r_t = r, the output (w_t, mv_t, s_{t+1}) must be consistent. So s_{t+1} = f(s_t, r_t) determined.
+
+Start: s_0 = A. Then s_1 = f(A, r_0), etc. But the function f is unknown; we just need consistency: same (state, r) pair must yield same (w, mv, next state).
+
+But states are assigned by the machine; we can define new states as needed. Essentially we build a DFA whose input is the read bit sequence r_0, r_1, ..., and output includes next state. We need the observed sequence to be accepted by a DFA with as few states as possible, where each state can have up to 2 transitions.
+
+But careful: the tape write changes the cell, so when head returns to same cell, content might differ. That's fine, handled by r_t being read at time t.
+
+Also halt: if a transition is undefined (--), the machine halts. Since target has 80 rows, machine might be running throughout (the tape pattern continues).
+
+So algorithm:
+1. Compute p_t for t=0..H-2: unique differing column between consecutive rows. If no diff, machine halted? Then tape frozen.
+2. r_t = target[t][p_t], w_t = target[t+1][p_t].
+3. mv_t = sign(p_{t+1} - p_t).
+4. Build minimal DFA consistent: states assigned greedily. For each time t, look at (current state s_t, input r_t). If we haven't defined transition, define it to (w_t, mv_t, next_state) where next_state is the state at t+1 — but we need consistency both ways: state s at t+1 must equal next state recorded when defining (s, r). So define on the fly: state at t+1 gets a name based on (state_t, r_t) transition. If same (state, r) seen before with different output => need finer state distinction. 
+
+Simpler: build a DFA by partition refinement (like DFA minimization). Assign initial state for time 0 = state 0. Then propagate: two times t, t' with same state must have same (r_t, w_t, mv_t) and if (r_t, w_t, mv_t) equal, then s_{t+1} must equal s_{t'+1}. So we group times by state, refine: start with all times same state; iteratively split times where (r, w, mv) differ within same group, and also next-time grouping must match.
+
+Actually simpler: define state of time t as the equivalence class of the "future" behavior? Let's just do iterative refinement:
+
+Initialize state_id[t] = 0 for all t (or for times we care). Repeatedly, for each state class, group times by (r_t, w_t, mv_t); if a class splits, split it. Also require: times in same class have next time in same class for their next time's state? That's automatic if next state is function of current state+input.
+
+Hmm, but consistency requirement: for times t,t' with state_id[t]=state_id[t'], we need r_t=r_t', w_t=w_t', mv_t=mv_t', and state_id[t+1]=state_id[t'+1]. The last is implied if we define next state as a function... let's just enforce all four together.
+
+Initialize all state_id=0. Loop:
+  compute signature of each time = (state_id[t], r_t, w_t, mv_t).
+  new_id = hash of signature.
+  if new_id == state_id (up to bijection), fixed point.
+But also need: times sharing same signature have next times with same state_id[t+1]? That's not automatically enforced. Actually the requirement is: if (state_id[t], r_t) == (state_id[t'], r_t'), then everything at t+1 (state, ...) equal. So refine: signature = (state_id[t], r_t, w_t, mv_t, ...) plus we need that times with the same (state_id, r) must have next times with equal state_id. So group by (state_id[t], r_t) and check next times' state_id equal; if not, merge/refine the current state_id.
+
+This is getting into partition refinement. Let me do standard minimal DFA: We have an input sequence u_0 u_1 ... u_{n-1} (n = H-1 inputs, r_t). We have outputs (w_t, mv_t). We want minimal DFA consistent.
+
+Better approach: Since n is small (~80), just do iterative splitting:
+
+state[t] initially arbitrary unique? No—start with minimal.
+
+Algorithm (DFA learning from one string - actually just consistency):
+- Start with state_id[t] = 0 for all t in 0..n-1 (times, where state at time t matters for reading r_t and producing transitions). Actually state at time t is the state entered before reading r_t.
+- We need f(state, r) -> (w, mv, state'). 
+- The trace gives: f(state[t], r[t]) = (w[t], mv[t], state[t+1]).
+
+We observe at each t the triple (r[t], w[t], mv[t]) and the state transition state[t] -> state[t+1].
+
+For consistency: define map M: (state, r) -> (w, mv, state'). We build M incrementally ensuring consistency: if (state[t], r[t]) already in M with different value, we must split states.
+
+Partition refinement:
+- P = {all t in same block}.
+- Repeat:
+  - For each block B, split by (r[t], w[t], mv[t]) within B into sub-blocks.
+  - Also split each block so that times t in same sub-block have state[t+1] ... wait, state[t+1] must be a function of (state[t], r[t]). If t,t' in same block and r[t]=r[t'], then we need state[t+1] to be equal (well, function of same key, so equal). So after splitting by (r,w,mv), for each resulting block, additionally split by whether state[t+1] falls in... hmm but state[t+1] is determined by the block of t+1.
+
+Simpler: iterate to fixed point where signature combines (block[t], r[t], w[t], mv[t], block[t+1]).
+
+Let me just code:
+```
+id = [0]*(n)  # state id at each time
+while True:
+    sig = {}
+    for t in range(n):
+        key = (id[t], r[t], w[t], mv[t], id[t+1])
+        # actually id[t+1] should be derived, but for refinement combine all
+        if key not in sig: sig[key] = len(sig)
+    newid = [sig[(id[t], r[t], w[t], mv[t], id[t+1])] for t in range(n)]
+    if newid == id: break
+    id = newid
+```
+Hmm but this conflates. Let's just trust: two times with same (id, r) must have same (w, mv) and same id[t+1]. So the correct fixed point: refine by grouping (id[t], r[t]) -> must have consistent (w[t], mv[t], id[t+1]). So:
+
+newid[t] determined by (id[t], r[t], w[t], mv[t], id[t+1]) as a signature—yes this enforces: same (id, r, w, mv, idnext). But it doesn't enforce that same (id, r) gives same w... if same (id, r) gives different w, then signatures differ, splitting further. Good. And it enforces next state consistency: same (id,r,w,mv) but different next id => split. Good. This converges to a consistent assignment. Then number of blocks = number of states, and transitions = distinct (id, r) pairs.
+
+Wait but there's subtlety: we don't need id[t+1] as part of signature if we define next state by block. But including it and iterating to fixed point works.
+
+Also we need states to be named in order of first use from state A. The minimal DFA might not be reachable only from A though—unreachable states can be dropped, but transition table must be complete for reachable ones? "fewer defined transitions" counts defined transitions. Undefined = halts.
+
+Also, we should choose transitions such that the machine exactly produces the target rows for all H rows. Since our DFA achieves it by construction (for the read sequence observed). But the target rows must match exactly across all columns; if there are columns outside the head-visited set with nonzero pixels, those wouldn't be produced. Since tape starts blank and only written at head positions, all nonzero pixels are at head positions. Good.
+
+But there's a subtlety: the head might visit a cell, write, and move on; the cell could later be revisited and rewritten. Our trace handles that.
+
+Also need H rows: target has 80 rows, and rows 0..79. Actually the machinery: "Row t is the binary tape AFTER t steps". So row 0 = blank (after 0 steps). We have 80 rows = steps 0..79. So there are 79 transitions, i.e., times t=0..78 where a step occurs from row t to t+1.
+
+Now, is the difference between consecutive rows always a single cell? In a TM yes, one cell changes per step. Let me verify against target. Row 1 vs row 0: single cell col39. Row 2 vs row 1: row1 col39=1, row2 cols38,39. Diff: col38 changes 0->1, col39 unchanged (1->1). One cell. 
+
+Row 3 vs row 2: cols 37 new 1, col39 stays. One cell: col37. Hmm but row2 had cols 38,39; row3 has 37,38,39. Diff is col37. Yes.
+
+Row 4 vs row 3: row3=37,38,39; row4=37,39. Diff: col38 1->0. One cell.
+
+Great. So single cell diffs. Let me find p_t = diff position for all t.
+
+Let me transcribe all 80 target rows as bit strings of length 40 and compute. I'll do this in code. Let me write the full final program.
+
+Plan for final search():
+1. Parse target into H=80 rows, W=40 (target width; but target is given as full rows, may include trailing spaces? They're fixed 40 chars).
+2. For t in 0..H-2, find set of columns where target[t] differs from target[t+1]. If size != 1, assume halted after t (then all subsequent rows identical). If >1, something's off—fallback.
+3. p_t = that column. mv_t = sign(p_{t+1}-p_t). If p_{t+1}==p_t, that'd mean move 0—impossible, so likely machine halted or target didn't change. Handle.
+4. r_t = target[t][p_t], w_t = target[t+1][p_t].
+5. Build consistent state assignment via refinement as above.
+6. Build transition table: for each state, for r=0,1 if defined: (w, mv, next_state). Number of states = max block id +1, name A, B, ...
+   But must ensure start state corresponds to time 0's state. Rename so time 0's block = A? Not necessary for correctness—start is A by definition. We need state of time 0 to be the "A" state. If time0's block is block k, rename blocks so block k becomes A, others in order of first occurrence get B, C, ...
+7. Build machine string: for each state, row = token for r=0 and token for r=1 concatenated. Undefined = '---' (3 chars undefined token?). The notation: "each row has two 3-character tokens". Undefined token is '---'? The example "1RB0LA_0LA1RB" uses 3-char tokens like "1RB". Undefined is denoted "---". So a state with undefined on read 0: token "---".
+   Actually if undefined, the machine halts.
+8. Verify by simulating this machine for 80 steps and comparing to target rows.
+
+Also, tie-break: "fewer declared states, then fewer defined transitions". Our refinement gives a consistent assignment but maybe not minimal; we could minimize further by merging blocks with identical behavior (like DFA minimization). The refinement we do should already merge equivalent ones since we group by signature. Actually our signature approach merges states that behave identically going forward. Let me make it a proper minimization:
+
+Iteratively: block[t] initial all 0. Repeat: new signature = (block[t], r[t], w[t], mv[t], block[t+1])... but this includes next block. Fixpoint yields minimal states given the observed trace? Maybe not fully minimal but let's refine more: after convergence, merge blocks that have identical (for r=0 and r=1) transition targets. Standard DFA minimization: Hopcroft. Since states small, we can do simple partition refinement based on transition function.
+
+Define transition matrix T[state][r] = (w, mv, next) or None. Initial: each distinct (block, r) pair defines a transition. Then refine.
+
+I think the signature approach with block[t+1] included gives a good result. Let me also post-process: minimize by merging equivalent states.
+
+Let me just implement and test.
+
+Given time constraints, write robust code. Also note mirror: "First moves in cached TNF are R: also test mirrored machines/targets." Not sure needed here.
+
+Let me write:
+
+```python
+import sys
+from collections import defaultdict
+
+def search(target):
+    H = len(target)
+    W = len(target[0].rstrip('\n'))
+    grid = [list(map(int, row)) for row in target]  # but might contain '.'? 
+```
+The target uses '.' for blank and '#' for light in the displayed text? "1 lights a pixel; 0 is dark". The target shown uses '.' and '#'. I think '.' = 0, '#' = 1. So convert.
+
+Actually likely the target is given as strings of '.' and '#'. Convert '#'->1, '.'->0.
+
+```python
+    grid = [[1 if c=='#' else 0 for c in row] for row in target]
+```
+
+Compute diffs:
+```python
+    p = []
+    for t in range(H-1):
+        diff = [c for c in range(max(len(grid[t]), len(grid[t+1]))) if grid[t][c] != grid[t+1][c]]
+        p.append(diff)
+```
+Handle.
+
+If all diffs singleton, proceed. Let p_t = diff[0].
+
+Then states. Let n = H-1 (number of steps). times t=0..n-1.
+
+r[t] = grid[t][p[t]]
+w[t] = grid[t+1][p[t]]
+mv[t] = +1 if p[t+1] > p[t] else (-1 if p[t+1]<p[t] else 0)
+
+State refinement:
+```python
+    n = len(p)
+    sid = [0]*n
+    while True:
+        sig = {}
+        for t in range(n):
+            key = (sid[t], r[t], w[t], mv[t], sid[t+1] if t+1<n else -1)
+            if key not in sig: sig[key] = len(sig)
+        newid = [sig[(sid[t], r[t], w[t], mv[t], sid[t+1] if t+1<n else -1)] for t in range(n)]
+        if len(set(newid)) == len(set(sid)) and all(...): 
+```
+Hmm the signature includes sid[t+1]. Comparing newid to sid directly requires same canonical numbering; use partition equivalence: check if newid refines sid to same partition. Simpler: iterate fixed number of times (like n iterations) or until the number of blocks stops increasing. Since refinement only increases blocks, stop when count stable.
+
+Then block count K. Time 0 is block sid[0]. Build transitions: for each block b, for r in {0,1}: collect times t in block b with r[t]==r; if any, transition = (w[t], mv[t], sid[t+1]) must be consistent across all such t.
+
+Then map blocks to letters with time-0 block = 'A', others in order of first appearance in trace (first t where sid[t]==b).
+
+But wait: start state A reads r[0] and goes to sid[1]. Our transitions must be consistent.
+
+Then encode: for state letter c (block b), token0 = encode(w,mv,next) for r=0 if exists else '---', similarly token1.
+
+Encoding: write bit as char '0'/'1', move 'L'/'R', next state letter.
+
+Verify: simulate and compare to target.
+
+Edge cases: H rows might not include t=H-1 step (i.e., only 79 steps). That's fine.
+
+Also the target might be a crop already? The target is 80x40 and "crop the candidate to all columns visited" etc. For scoring, we need to produce a machine whose tape over the visited region matches the target. The target rows given are the full target crop presumably (the target machine's tape cropped to visited columns over its run of 80 rows). So the target's column 0 corresponds to some column in the machine's tape; our inferred machine will have its own coordinates but the pattern should match up to alignment. Since we reconstruct from diffs, our head positions p_t are relative to target columns; but the machine's actual head positions could be offset. That's fine—the alignment is handled by scoring. We'll just produce the machine; the harness aligns.
+
+But our reconstruction used grid coordinates directly as head positions; the reconstructed machine's head will start at its own 0 and follow the inferred moves. If target column 0 is not the machine's actual tape column 0, our reconstruction would produce a tape that's shifted. But scoring uses best alignment, so should be fine as long as the transition structure (writes relative to head position) is right. Actually the transition structure depends on head positions: reading r = grid[t][p_t] means the bit at the head. If our coordinate system is shifted by constant offset k, the head position within the machine's tape is p_t - k, but the bit read is still grid[t][p_t], correct, since the tape content is the same pattern shifted. So transitions inferred are correct regardless of offset. 
+
+Let's implement. Also handle the case where the machine halts: if some diff is empty (rows identical), then machine halted; subsequent rows identical. Then we treat that as halt: transition from state reading that symbol is undefined, and remaining rows all equal.
+
+Actually if machine halts, rows after halt are identical to the halt row. So diff empty => halted. Then the last transition (from row before) ended in halt because next state undefined. We should mark that transition undefined rather than to a new state.
+
+Let me handle: if at time t (from row t to t+1) no diff, then machine halted at some point ≤ t. Actually halt occurs after a step whose next state is undefined. Hmm—the tape stops changing after the halt step's write? "A halted machine's tape/head remain frozen." The halt happens when the current state's transition on current symbol is undefined. But undefined means no action, so the write of that step isn't performed? Typically undefined = machine halts without executing. But the row change from t to t+1 for the halt step: if transition undefined, no write, no move. So rows t and t+1 identical. Thus the first empty diff indicates halt at time t (transition from t to t+1 undefined), and no steps after.
+
+But careful: the step at time t is the step STARTING at row t. If at row t state is S reading r, and (S,r) undefined, machine halts; row t+1 = row t. So the last valid transition is from t-1 to t. Then to build machine, the state after last transition has undefined transition on the symbol read at time t.
+
+Given the target has 80 rows and the pattern continues, likely no halt.
+
+Let me now also think about whether the pattern is actually periodic/steady-state: looks like a pattern that a machine running forever would produce. Our DFA from the trace should capture it.
+
+Let me write the final code carefully.
+
+```python
+import sys
+from collections import defaultdict
+
+def search(target):
+    rows = target
+    H = len(rows)
+    # convert
+    grid = []
+    for r in rows:
+        grid.append([1 if ch == '#' else 0 for ch in r])
+    W = max(len(r) for r in grid)
+    for r in grid:
+        while len(r) < W: r.append(0)
+    
+    # find single-cell diffs
+    p = []
+    for t in range(H-1):
+        diff = [c for c in range(W) if grid[t][c] != grid[t+1][c]]
+        p.append(diff)
+    
+    # find where halting starts (first t with empty diff => step t is undefined once here)
+    # Actually if diff empty at t, then transition at time t undefined; rows after equal.
+    nsteps = H-1
+    # find first empty diff index
+    halt_t = None
+    for t in range(nsteps):
+        if len(p[t]) == 0:
+            halt_t = t
+            break
+    if halt_t is not None:
+        # steps 0..halt_t-1 valid, step halt_t halted
+        valid = halt_t  # times t in 0..valid-1 have transitions
+        n = valid
+        # rows beyond halt_t equal grid[halt_t]
+    else:
+        n = nsteps
+        valid_diffs = p
+    p = p[:n]
+    for t in range(n):
+        assert len(p[t]) >= 1
+    ...
+```
+If halt_t found, we still need state at time halt_t to be a state whose transition on r is undefined. The state at time halt_t is sid[halt_t] from refinement—but we only defined states for times 0..n-1 producing sid[0..n]. Let's just build including time halt_t state as a state with undefined transition.
+
+Simplify: if no halt (likely), proceed.
+
+Continue:
+
+```python
+    ppos = [p[t][0] for t in range(n)]
+    r = [grid[t][ppos[t]] for t in range(n)]
+    w = [grid[t+1][ppos[t]] for t in range(n)]
+    mv = []
+    for t in range(n-1):
+        d = ppos[t+1]-ppos[t]
+        if d > 0: mv.append(1)
+        elif d < 0: mv.append(-1)
+        else: mv.append(0)  # shouldn't happen
+    # mv has length n-1 but we need n entries; last step's move unknown.. actually last step writes but we don't know move because no next. We only have H rows => steps 0..H-2 transition. Last transition's move not observable directly? It is: after step t-1, head at ppos[t-1]; step t-1 moves to ppos[t]. So move for step t-1 is determined by positions. The last step we know is step n-1 (transition from row n-1 to row n). Hmm.
+```
+Wait. We have rows 0..H-1 = steps 0..H-1 state. Transitions: row t -> row t+1 for t=0..H-2, so H-1 transitions. Transition t occurs when head at position p_t (the cell that changes between row t and t+1), reads r_t = grid[t][p_t], writes w_t = grid[t+1][p_t], and moves to p_{t+1}. So move for transition t is determined by p_{t+1}-p_t, for t=0..H-3. For the LAST transition t=H-2, head moves to some position p_{H-1} which is not observable (no row H written... but we could determine it? The head after last transition is at position p_{H-1} which is not directly observed). Hmm, actually p_{H-1} would be the cell that changes in the NEXT transition, which we don't have. So last move is unobservable. 
+
+But maybe we can infer: in a TM, the move is a function of (state, read). We can infer the last move from consistency: the last transition (state s_{H-2}, r_{H-2}) -> (w, mv, s_{H-1}). The move should equal what we'd get from other occurrences of the same (state, r) pair. So when building the DFA, for the last transition, treat mv as unknown and pick from consistency.
+
+Simpler: run refinement using only the observable (r, w, mv) and states, and for the last transition, don't fix mv; instead after building transitions from earlier transitions, deduce.
+
+Alternative: define observable steps t=0..H-3 with full (r,w,mv); the last step H-2 with (r,w) only, move inferred later.
+
+Hmm but also need to define the state at time H-1 (after last transition) — it's just the next state but no transition observed. Actually the machine must have defined transitions; we need to produce a complete transition table (or the reduction). The last state's transitions aren't directly observed, but we need them for output? The machine string requires transitions for all defined states, but undefined allowed. If the final state only appears at time H-1 and we don't know its transitions, we could mark them undefined (halts) — but that changes behavior only after H steps, which the harness might not care about (only checks first H rows?). The harness checks pixels over H rows presumably. But minimality: fewer defined transitions is better, so marking unknown as undefined is good, but risky if harness simulates further and compares only H rows—extra undefined is fine.
+
+But better: recover the last move from pattern. Actually the move is likely constant per state. Let's include consistency: build DFA where for each (state, r) we record (w, mv) from all steps except the last, where mv unknown; then the last step's move is determined by its (state, r). If (state, r) doesn't appear elsewhere, we guess.
+
+I think the trace is periodic/steady-state so all pairs repeat.
+
+Let me implement the refinement with the last step's move as a free variable resolved by consistency:
+
+Approach: First, determine state assignment from transitions t=0..H-1 states? Hmm.
+
+Maybe simplest: mimic known solution—this pattern is likely from a known "neverhalt" TM. The neverhalt project generated small TMs with interesting behaviors. The import hints at using cached enumeration. Maybe the target comes from a small TM in the cache. But we can't rely on cache.
+
+Let me just write code and iterate. Since I can't run code here, I must write carefully.
+
+Let me reconsider: number of states. The trace from target: let's think of p_t sequence. Differences: p_1 - p_0 = 39-0 = 39? Wait p_0 is the diff between row0 and row1 = col39. p_1 = diff between row1 and row2 = col38. So move from p_0 to p_1 is -1 (L). Hmm but I earlier said head at p_t; the move is from p_t to p_{t+1}.
+
+p sequence: row1 vs row0 diff col39 => p0=39. row2 vs row1 diff col38 => p1=38. row3 vs row2 diff col37 => p2=37. row4 vs row3 diff col38 => p3=38. So moves: 39->38 L, 38->37 L, 37->38 R, ...
+
+Interesting. So head moves around. The state machine's reads/writes vary.
+
+Let me just write robust code.
+
+Time budget: 90s. Brute force over states might be too big, but our trace-based method is fast.
+
+However the trace-based method assumes deterministic TM with at most 2 states per... it's exact for any TM that produces this trace (given deterministic), regardless of state count. The state minimization gives the smallest DFA. But the true minimal TM might have a different structure with fewer declared states if we allow some transitions to be "don't care"? No—any TM matching the trace must have states consistent with the trace. The minimal number of states is the minimal DFA size for the observed input sequence. Our refinement gives that (approximately). Good.
+
+But wait: the machine must match not just the trace but the whole tape. Our DFA is derived from the trace, which is derived from the tape, so it reproduces the tape if executed from the same initial conditions.
+
+Also alignment: our reconstruction may produce a tape that's a fixed shift of the target; scoring handles alignment. But actually the "crop" of candidate is relative to its own head positions (starting at column 0?). Let me not worry; harness aligns.
+
+Let me now write the final code.
+
+```python
+import sys
+from collections import defaultdict
+
+def search(target):
+    try:
+        lines = list(target)
+    except TypeError:
+        lines = target.split('\n')
+    grid = [[1 if ch == '#' else 0 for ch in line] for line in lines]
+    H = len(grid)
+    W = max(len(r) for r in grid)
+    for r in grid:
+        while len(r) < W: r.append(0)
+    
+    # determine last observable step
+    # transitions t = 0..T-1 where T = number of transitions we can fully observe (with move)
+    # rows: 0..H-1 => transitions 0..H-2
+    # move observable for transitions 0..H-3 (need row H-1 diff? no)
+    # Let's collect diffs for t=0..H-2
+    diffs = []
+    for t in range(H-1):
+        d = [c for c in range(W) if grid[t][c] != grid[t+1][c]]
+        diffs.append(d)
+    # check all single
+    for d in diffs:
+        if len(d) == 0:
+            # halted
+            pass
+    ...
+```
+
+If any diff empty, handle halt separately (assume none for now but code fallback).
+
+Now:
+```python
+    T = H-1  # number of transitions
+    # positions
+    if all(len(d)==1 for d in diffs):
+        pos = [d[0] for d in diffs]
+        r = [grid[t][pos[t]] for t in range(T)]
+        w = [grid[t+1][pos[t]] for t in range(T)]
+        mv = [0]*T
+        for t in range(T-1):
+            mv[t] = 1 if pos[t+1]>pos[t] else (-1 if pos[t+1]<pos[t] else 0)
+        # last move unknown
+```
+If some diff has len != 1, maybe target rows beyond crop have extra changes. Handle by taking... let's hope len==1.
+
+Now state refinement including unknown last move: do refinement on (r, w, mv) for t<T-1, and for t=T-1 use (r,w) with mv wildcard.
+
+Actually let's do this: first determine state assignment using only t=0..T-2 transitions (with known moves), where sid[t] is state at time t (before reading). times 0..T-2. Then the last transition t=T-1: its state sid[T-1] must be determined by propagation? We don't know sid[T-1] unless we include it. But state at time T-1 is sid[T-2] after transition of t=T-2. Hmm.
+
+Let me define times 0..T-1 as states read for transitions, and times 1..T as states after. Let's just use times 0..T-1 with transitions to time+1, and include time T state unknown.
+
+Refine using transitions t=0..T-2 fully, and transition T-1 partially (r,w known, mv unknown).
+
+Simpler plan: iterate refinement with signature including unknown mv though. Represent mv as -2 for unknown; signature includes (sid[t], r, w, mv, sid[t+1]). For unknown mv, -2. But then split might be wrong. After convergence, define transitions: for each (sid, r), the transition is (w, mv, sid_next) using the earliest occurrence where mv known; if only unknown occurrence, we set mv from... guess.
+
+Given steady state, likely many occurrences. Let's code it with the convention that unknown mv is filled by majority after.
+
+Actually let me just handle it: after computing transitions and testing, if simulation mismatches at the last step only due to wrong move, adjust by trying both directions and checking consistency.
+
+Alternatively, note that the last move doesn't affect any of the H recorded rows! Because rows are 0..H-1 and transition T-1 = H-2 writes row H-1. The move after that is unrecorded. So the machine's behavior for first H rows is fully determined regardless of last move. So we can pick any move (e.g., R) for the last transition; it won't affect scoring of the H rows. But it would affect machine's semantic minimality? "fewer defined transitions" counts transitions; the last transition still defined. Picking R is fine.
+
+But if harness simulates beyond H rows to verify cycle/halt... "The harness independently checks pixels, cycle proofs, and minimality." Probably checks only target H rows. Let's not overthink; choose move that keeps the state sequence periodic.
+
+Actually, we can infer the last move by periodicity: the state at time T (after last transition) should satisfy that the trace repeats. Not needed.
+
+Let me code:
+
+```python
+    # Refinement for times 0..T-1 (state before each transition)
+    n = T
+    # known moves for t < T-1; t = T-1 unknown
+    moves = mv  # length T, last maybe 0 placeholder
+    # We'll do refinement with signatures of (sid, r, w, mv_known_flag, mv)
+    # For simplicity, iterate:
+    sid = [0]*n
+    for _ in range(n+2):
+        sig = {}
+        for t in range(n):
+            key = (sid[t], r[t], w[t], mv[t] if t < T-1 else -9, sid[t+1] if t+1<n else -1)
+            if key not in sig:
+                sig[key] = len(sig)
+        new = [sig[(sid[t], r[t], w[t], mv[t] if t<T-1 else -9, sid[t+1] if t+1<n else -1)] for t in range(n)]
+        # check partition equality
+        if partitions_equal(sid, new): 
+            sid = new
+            break
+        sid = new
+```
+Hmm partition comparison—since starting sid all 0 and refining, new refines old always (signature includes old sid). So blocks only increase. Stop when count unchanged from previous iteration.
+
+But new includes sid[t+1] which depends on new... it's fine, iterative.
+
+Wait but for the last transition t=T-1, sid[t+1] doesn't exist; use -1.
+
+Let me write:
+```python
+    sid = [0]*n
+    prev_count = 0
+    while True:
+        sig = {}
+        for t in range(n):
+            key = (sid[t], r[t], w[t], mv[t] if t < T-1 else -9, sid[t+1] if t+1<n else -1)
+            if key not in sig:
+                sig[key] = len(sig)
+        new = [sig[(sid[t], r[t], w[t], mv[t] if t<T-1 else -9, sid[t+1] if t+1<n else -1)] for t in range(n)]
+        cnt = len(sig)
+        if cnt == prev_count:
+            sid = new
+            break
+        prev_count = cnt
+        sid = new
+```
+Note mv[-9] not a valid move but consistent.
+
+Hmm issue: sid[t+1] appears in signature, causing coupling. Might not converge quickly but should since finite.
+
+After this, build transitions:
+```python
+    K = len(set(sid))
+    # map block -> list of times
+    # Build behavior
+    beh = {}  # block -> {r: (w, mv, nextblock)}
+    for t in range(n):
+        b = sid[t]
+        rr = r[t]
+        ww = w[t]
+        m = mv[t] if t<T-1 else None
+        nb = sid[t+1] if t+1<n else None
+        d = beh.setdefault(b, {})
+        if rr in d:
+            w0,m0,n0 = d[rr]
+            if w0!=ww or m0!=m or n0!=nb:
+                # conflict: shouldn't happen
+                pass
+        else:
+            d[rr] = (ww, m, nb)
+    # For blocks appearing only as next (t+1 == n?), they have no behavior -> need transitions? 
+```
+Block K-1 might be the state at time n (after last transition) only. If it has no transitions observed, we must define something (e.g., undefined) or maybe it's same as another block.
+
+Actually sid has n entries for times 0..n-1. State at time n (after last transition) is sid[-1]'s next = nb of last transition, which is sid[n-1]... wait times: transition t goes from state sid[t] to state sid[t+1] (for t+1<n). For last transition t=n-1, next state unknown (-1). We don't have state at time n. So all states that appear are among sid[0..n-1]. Good, no extra block.
+
+So there are K states, all appearing as sid[t] for some t. But some may only be next-states. Fine.
+
+Now, the start state must be sid[0]. Rename: letters in order: sid[0] -> 'A', then blocks in order of first appearance in trace t=0..n-1, others. Actually all blocks appear somewhere in 0..n-1 by definition (sid defined for all t). So assign letters by first occurrence.
+
+```python
+    block_of = {}
+    letters = {}
+    order = []
+    for t in range(n):
+        b = sid[t]
+        if b not in letters:
+            letters[b] = chr(ord('A')+len(letters))
+    # ensure sid[0] is A: if letters[sid[0]] != 'A', remap
+    # Reorder so that block sid[0] gets 'A', then by first occurrence after index 0
+    remap = {}
+    remap[sid[0]] = 'A'
+    for t in range(1,n):
+        if sid[t] not in remap:
+            remap[sid[t]] = chr(ord('A')+len(remap))
+    # also blocks not in trace? none
+```
+Then build string:
+```python
+    states = []
+    for b in range(K):
+        # find letter
+        ...
+```
+Better: build mapping block->letter via remap for all distinct blocks:
+```python
+    distinct = []
+    for t in range(n):
+        if sid[t] not in distinct: distinct.append(sid[t])
+    letter = {}
+    letter[sid[0]] = 'A'
+    li = 1
+    for b in distinct:
+        if b not in letter:
+            letter[b] = chr(ord('A')+li); li+=1
+```
+Then transitions dict keyed by (letter, r) -> (w, mv, nextletter):
+```python
+    trans = {}
+    for t in range(n):
+        b = sid[t]; L = letter[b]; rr = r[t]
+        nb_next = letter[sid[t+1]] if t+1<n else None
+        m = mv[t] if t<T-1 else None
+        # if next unknown, we still know w and r; move unknown -> we'll decide
+        if rr not in trans or trans[rr] is None:
+            trans[(L,rr)] = [w[t], m, nb_next]
+        else:
+            e = trans[(L,rr)]
+            if e[0] != w[t] or e[1] is not None and m is not None and e[1]!=m:
+                pass
+            if nb_next is not None:
+                e[2] = nb_next
+```
+The last transition's m unknown and nb_next None; fill later.
+
+Also for the last transition, if its (L,rr) appeared earlier, m and nb_next are known from earlier; use those. Let's implement: after collecting all, for entries with m None, look up same (L,rr) with known m.
+
+But careful: last transition's state L and symbol rr might match an earlier transition (steady state) — likely.
+
+Now build machine string:
+For each state letter (in alphabetical order), row = token0 + token1.
+token format: e.g., '1RB' for write 1, move R, next B. For read 0 and read 1.
+If undefined: '---'.
+
+Encode: 
+```python
+    def enc(w,mv,nxt):
+        if w is None or mv is None or nxt is None: return '---'
+        return f"{w}{'R' if mv>0 else 'L'}{nxt}"
+```
+If mv==0? shouldn't happen; maybe machine halts (no move) — but undefined transition uses '---'.
+
+Machine string: states sorted by letter; but letters might not be contiguous A,B,C...? They are.
+
+Verify simulation.
+
+Also handle halt: if target rows eventually repeat and pattern ends, the last state's transitions on some symbols undefined. Our approach: only define transitions observed. If a state's read symbol never observed, mark undefined (halts). That matches minimality. But could cause mismatch if target expects continuation—but target only 80 rows.
+
+Now simulate and compare with target:
+```python
+    def simulate(mach, H, W):
+        parts = mach.split('_')
+        idx = {chr(ord('A')+i): i for i in range(len(parts))}
+        trans = {}
+        for i,p in enumerate(parts):
+            if len(p)<6: continue
+            for r in (0,1):
+                tok = p[3*r:3*r+3]
+                if tok=='---': continue
+                w = int(tok[0]); mv = tok[1]; ns = tok[2]
+                trans[(i,r)] = (w, 1 if mv=='R' else -1, idx[ns])
+        tape = [0]* (2*W+something)  # infinite
+        # use dict
+        tape = defaultdict(int)
+        head = 0
+        state = 0
+        rows = []
+        for t in range(H):
+            rows.append(dict(tape))
+            if t==H-1: break
+            rr = tape[head]
+            if (state,rr) not in trans:
+                # halted: rows after identical
+                for _ in range(H-t-1):
+                    rows.append(dict(tape))
+                break
+            w,mv,ns = trans[(state,rr)]
+            tape[head]=w
+            head+=mv
+            state=ns
+        return rows
+```
+Then compare cropped. But alignment: our machine starts head at 0; target has some offset. To verify, align: find best shift and compare. Simpler: check that the pattern matches with some shift.
+
+Alternatively, we could set initial head offset? The problem says head at cell 0. So our machine's execution defines its own tape crop. The harness crops both and computes accuracy. So our verification should do the same.
+
+For verification, compute candidate visited columns and target columns, align by best offset.
+
+But for the search, we mostly need the machine string. Let me just also compare via alignment to report accuracy.
+
+Let me compute crop:
+Candidate: head positions over rows 0..H-1 -> min/max; but "crop to ALL columns visited by the head" — maybe columns visited = head positions? The cells visited (head position at any time). The tape cells outside head-visited region remain blank; cropping to head-visited columns loses them, but they're blank anyway, and union comparison counts non-overlapping columns as wrong. Hmm "EVERY pixel in a non-overlapping column is wrong, even if it is blank." So candidates should crop to visited columns only (to minimize union width?). Target is given as fixed 40 columns.
+
+Actually the target provided is the target's crop. Candidate crop = columns visited by head during rows 0..H-1 (probably all columns with any activity, i.e., min..max of head positions, or maybe min..max of nonzero cells). Let me use min..max of head positions over the H rows, then extract tape values in that range.
+
+Hmm but if head visited a column but never wrote there (blank), included as blank.
+
+For alignment, shift candidate crop relative to target crop and count.
+
+OK.
+
+Let me now think about correctness of the refinement—potential bug: signature includes sid[t+1] which for t=n-1 is -1 always. Fine.
+
+Also mv as -9 for last; but what if the actual last move is observable from target? It's not. Use consistency.
+
+Let me also handle the possibility that some diff is empty => halt. Then T = halt_t (transitions 0..halt_t-1 valid), and transition halt_t is undefined (halt). States at times halt_t..T-1 same as halt state? Actually after halt, rows identical, so no more transitions. We just ignore rows after halt. Machine then: the state at time halt_t (before the halt step) has undefined transition on read symbol r[halt_t]? But wait, at time halt_t, the state is sid[halt_t] which equals the state after last valid transition. The halt transition is from state at time halt_t reading grid[halt_t][pos?]—but pos unknown since no diff. The head at halt is wherever; the transition is undefined regardless of symbol? Undefined means "halt" for any symbol? Typically '--' state row means halts for both. So the state at halt is a halting state with no transitions. Set its row to '------' (all undefined).
+
+Given target likely runs to the end, skip halt handling initially.
+
+Now, will the state refinement produce the true minimal machine? The observed trace length is ~79 steps. The machine's state cycle might be long; but since we only need to match 80 rows, the minimal DFA for the observed trace might have few states (maybe the pattern is periodic after some transient). Let's hope.
+
+Actually the pattern shown seems highly periodic with period maybe large. Number of states could be moderate.
+
+Let me count pattern: The rows look like a "staircase" moving left by 1 every ~2 rows with a repeating 6-row motif. The rightmost ink at col 38 stays for many rows. Hmm.
+
+Let's look at row pairs near beginning: rows 1-4 involve cols 37-39 then row 5 is just col37 then 6,7... It seems like the head bounces: moves right along the top, then comes back left, etc. The pattern then creates diagonal stripes.
+
+Given complexity, trust the trace method.
+
+One more concern: the target given might be only the "interesting" crop but with '.' and '#' where '.' is 0. Yes.
+
+Let me write final code with try/except and fallback (if diff not singleton, use a generic search over small TMs? That'd be expensive). I'll include fallback that returns a best-effort machine string.
+
+Also "Optionally return {'tm': machine_string, ...}". Signature says -> str. I'll return string.
+
+Let me write the code now, carefully.
+
+```python
+import sys
+from collections import defaultdict
+
+def search(target):
+    if isinstance(target, str):
+        lines = target.split('\n')
+        lines = [l for l in lines if l != '' or True]
+    else:
+        lines = list(target)
+    # normalize: keep only rows
+    lines = [l for l in lines if l is not None]
+    H = len(lines)
+    grid = []
+    for l in lines:
+        grid.append([1 if c == '#' else 0 for c in l])
+    W = max(len(r) for r in grid) if grid else 0
+    for r in grid:
+        r.extend([0]*(W-len(r)))
+    H = len(grid)
+    
+    # diffs
+    n_trans = H-1
+    if n_trans <= 0:
+        return '0RA'  # trivial
+    
+    diffs = []
+    halt_at = None
+    for t in range(n_trans):
+        d = [c for c in range(W) if grid[t][c] != grid[t+1][c]]
+        if len(d)==0 and halt_at is None:
+            halt_at = t
+        diffs.append(d)
+    
+    T = halt_at if halt_at is not None else n_trans
+    # transitions 0..T-1 valid
+    pos = [diffs[t][0] for t in range(T) if len(diffs[t])==1]
+    if len(pos) != T:
+        # fallback: cannot determine
+        return '0RA'
+    r = [grid[t][pos[t]] for t in range(T)]
+    w = [grid[t+1][pos[t]] for t in range(T)]
+    mv = [0]*T
+    for t in range(T-1):
+        d = pos[t+1]-pos[t]
+        mv[t] = 1 if d>0 else (-1 if d<0 else 0)
+    # last move unknown marker -9
+    for t in range(T):
+        if t == T-1: mv[t] = -9
+    
+    n = T
+    # state refinement
+    sid = [0]*n
+    prev = 0
+    for it in range(n+3):
+        sig = {}
+        new = [0]*n
+        for t in range(n):
+            key = (sid[t], r[t], w[t], mv[t], sid[t+1] if t+1<n else -1)
+            if key not in sig: sig[key] = len(sig)
+            new[t] = sig[key]
+        if len(sig) == prev:
+            sid = new
+            break
+        prev = len(sig)
+        sid = new
+    
+    # behavior per state
+    beh = {}
+    for t in range(n):
+        b = sid[t]
+        d = beh.setdefault(b, {})
+        rr = r[t]; ww = w[t]; mm = mv[t]; nb = sid[t+1] if t+1<n else None
+        if rr in d:
+            e = d[rr]
+            if e[0]!=ww:
+                e[0]=ww  # trust last? 
+            if mm!=-9 and (e[1]==-9 or e[1]==mm):
+                e[1]=mm
+            if nb is not None:
+                e[2]=nb
+        else:
+            d[rr] = [ww, mm, nb]
+    # fill unknowns from same (state,symbol) occurrences already done; last move -9 remains if never known
+    # For entries with mv -9, choose later (e.g., -1 or 1) but must keep state sequence; 
+    # Since last transition's next state is None anyway, and it's the final transition, 
+    # choose a move; but we also need it to be consistent with the pattern: find from other 
+    # occurrences the typical move for that (state, symbol) - we already merged them, so 
+    # if this entry had other occurrences, mm would've been set. If none, pick 1? 
+    # We'll pick based on parity? Choose -1 (L).
+    
+    # letters
+    distinct = []
+    for t in range(n):
+        if sid[t] not in distinct: distinct.append(sid[t])
+    letter = {sid[0]: 'A'}
+    for b in distinct:
+        if b not in letter:
+            letter[b] = chr(ord('B') + (len(letter)-1))
+    
+    # build transitions
+    trans = {}  # (letter, r) -> (w, mv, nextletter)
+    for t in range(n):
+        b = sid[t]; L = letter[b]; rr = r[t]
+        e = beh[b][rr]
+        ww, mm, nb = e
+        Lnb = letter[nb] if nb is not None else None
+        key = (L, rr)
+        if key not in trans:
+            trans[key] = [ww, mm, Lnb]
+        else:
+            cur = trans[key]
+            if cur[1] in (-9, None) and mm != -9:
+                cur[1] = mm
+            if cur[2] is None and Lnb is not None:
+                cur[2] = Lnb
+    # resolve remaining -9: choose 1 (R) -- shouldn't matter
+    for k in list(trans.keys()):
+        if trans[k][1] == -9:
+            trans[k][1] = 1
+    
+    # Build string over all distinct blocks? Only those appearing as state sid[t].
+    # But next states might reference blocks not in distinct? nb = sid[t+1] always a state, so in distinct.
+    letters_sorted = sorted(trans.keys(), key=lambda x: x[0])
+    # Actually iterate over distinct blocks as states
+    state_list = [letter[b] for b in distinct]
+    state_list = sorted(state_list)
+    parts = []
+    for L in state_list:
+        row = ''
+        for rr in (0,1):
+            key = (L, rr)
+            if key in trans:
+                ww, mm, Lnb = trans[key]
+                if Lnb is None or ww is None or mm is None:
+                    row += '---'
+                else:
+                    row += f"{ww}{'R' if mm>0 else 'L'}{Lnb}"
+            else:
+                row += '---'
+        parts.append(row)
+    mach = '_'.join(parts)
+    return mach
+```
+
+Wait distinct blocks: `distinct` includes blocks sid[0..n-1]. Good.
+
+But a state might have no read-0 observed but have read-1; row token0 = '---'. Fine.
+
+Also if some state letter computed as chr(ord('B')+k) could collide if k=0 gives 'B'. distinct already has sid[0] as 'A', then others get B,C,... via len(letter)-1: for first new, len(letter)=1, chr(ord('B')+0)='B'. Good.
+
+Next: verify. Let me add internal verification comparing simulated tape to target with alignment, and if bad, attempt fallback. Since I can't run, include robust verification and maybe return machine anyway.
+
+Potential issue: The refinement could merge states incorrectly because of the last transition's unknown mv causing spurious splits (-9 always in signature for last state). Fine.
+
+Another issue: For the last transition, w and r are known but mv unknown. The next state nb is None. In beh, for the block and symbol, if earlier occurrence exists, e[1] set and e[2] set. If not, e[1] stays -9 and later set to 1. And Lnb None -> token '---'?? That would make the transition undefined, causing halt at time n-1! But we want a defined transition that writes w and moves. If Lnb None, we can't form token. Handle: if Lnb None but w known, we need a next state. Use... the state at time n-1's block is sid[n-1]; maybe next block should be guessed as some state. Hmm.
+
+Better: incorporate time n (the state after last transition) as an extra unknown state, or infer from periodicity.
+
+Alternative: extend trace by one virtual step using predicted next tape? Not reliable.
+
+Given steady state, likely (sid[n-1], r[n-1]) occurs earlier, giving next state. So fine. But guard: if Lnb None, set next state to the same block? Could create wrong behavior but only affects post-H. Set to 'A'? Eh.
+
+Actually maybe we should just include the final state: treat time n as having its own state, but then its transitions undefined. But the transition from time n-1 must go to that state; token needs a letter for it, making it a declared state. That increases states. Our approach: use existing block if consistent.
+
+I'll code: if Lnb is None, set next to letter[sid[n-1]] (self-loop) if that state exists, else 'A'.
+
+Hmm but if the true machine has a different state, behavior after H differs; not our concern for pixels.
+
+Now verification & alignment: implement crop of candidate and target, compute best accuracy, and optionally adjust. Not strictly needed for return but useful to detect failures. I'll include a light check: simulate and compare with alignment; if accuracy < some threshold, still return but maybe try variants.
+
+Given uncertainty, maybe the simpler path: return the machine from the trace; harness checks.
+
+Let me also consider: maybe the target corresponds to a machine that is already known (neverhalt). The pattern might be from a 3-state or 4-state machine. Our inference should find it.
+
+Let me refine the transition-building to ensure next state for last transition from consistency with behavior table: beh[b][rr][2] gives nb from any occurrence; if none, we can guess from the last known next symbol: use beh[block][rr] from earlier. Already handled.
+
+One more: `behh` merging conflicts—I overwrite w etc. Should be consistent if refinement correct. Let me make refinement enforce: after refinement, for each (sid, r), all (w, mv (known), nb) equal. Add assertion-ish code.
+
+Also, refinement stopping condition: `if len(sig)==prev` where prev initialized 0; first iteration sig count likely >0 so continue. Compare partitions: len(sig)==prev implies same number of blocks as previous iteration's count; since refinement only increases blocks, equal count means fixed point. But we compare count of new sig to previous count; initial prev=0 so first iteration continues. Fine.
+
+Edge: n might be 1; then loop small.
+
+Let me also handle target possibly having trailing empty rows; no.
+
+Now let me think about whether the head-visited crop should include cells beyond head position range. We extract tape over range [min(pos), max(pos)] inclusive? The head may visit cells; tape at those columns is what matters. Union with target columns for scoring is harness's job; we just return machine.
+
+Alright, also the harness may require exact: "Exact requires identical widths and ALL H rows". Our reconstructed machine's tape crop should match target crop exactly if correct.
+
+Potential subtlety: our machine's tape crop starts at min head position over rows; target's crop starts at its own min. Alignment shifts. Good.
+
+Let me finalize code, add comments, return string. Also wrap in try/except returning a fallback machine.
+
+Actually, wait. Let me reconsider the problem statement: "Crop the candidate to ALL columns visited by the head in rows 0..H-1". So candidate crop is from min head col to max head col. The number of columns = max-min+1. Target is given as its crop (40 columns). Alignment over union.
+
+Our machine's head positions relative to its tape; since we defined tape starting blank with head at cell 0, and inferred moves from pos diffs (which are relative to target's coordinate), the machine's head positions will be pos[t] - offset where offset chosen so... hmm actually our reconstruction defines moves directly from pos differences, but initial head position is fixed at cell 0 at step 0. In the target, the head at step 0 is at some column c0 (unknown, but the first diff is at col pos[0]). The target's head at step 0 might be at a column different from pos[0] if no diff yet (row0 blank, so any cell could be head). Actually at step 0 tape blank; the head is at some column; the first write creates the first diff. So c0 = pos[0]? At step 0, head reads 0, writes w=pos[0]... yes the diff between row0 and row1 occurs at the head position at step 0, so pos[0] = head position at step 0. Thus target's head at step 0 = pos[0], not 0. But machine spec says head at cell 0, tape blank. The harness presumably places head at 0 and tape blank; target's shown crop is just displayed with its own alignment. The scoring aligns best. So our machine's head at step0 is at 0 and writes at 0, producing tape pattern identical to target shifted by -pos[0]. That's fine.
+
+But careful: our moves derived from pos diffs are relative to absolute target columns; if we shift everything by -pos[0], moves unchanged. Starting head at 0 in shifted coords means target column pos[0] maps to 0. Good.
+
+Now the writes r (read bits) depend on absolute tape content; shifting doesn't change values. Good.
+
+Now implement final code.
+
+Let me also add a self-check: simulate machine and compare to target with best alignment; if mismatch, try to fix? Given no execution ability, keep it simple and return.
+
+Actually, I want to be more confident. Let me manually reason about the expected number of states and whether the refinement captures a periodic machine. The trace length 79. The pattern appears to have a period (in behavior) of maybe 8-12 steps. If the machine is deterministic finite, the state repeats with some period after transient; the tape pattern would be eventually periodic. Rows show a quasi-periodic shifting pattern. Fine.
+
+Let me write the code and hope.
+
+One more consideration: "state names can be introduced in order of first use" — meaning our naming A,B,C in first-use order is expected/optimal. Good.
+
+Let me produce final answer with one python block and brief notes.
+
+Let me write the code cleanly:
+
+```python
+import sys
+from collections import defaultdict
+
+def _parse(target):
+    if isinstance(target, str):
+        raw = target.split('\n')
+    else:
+        raw = list(target)
+    rows = []
+    for line in raw:
+        if line is None: continue
+        line = line.rstrip('\n').rstrip('\r')
+        rows.append([1 if ch == '#' else 0 for ch in line])
+    return rows
+
+def _simulate(mach, H):
+    parts = mach.split('_')
+    n = len(parts)
+    index = {}
+    for i in range(n):
+        index[chr(ord('A')+i)] = i
+    trans = {}
+    for i, p in enumerate(parts):
+        if len(p) < 6: continue
+        for r in (0,1):
+            tok = p[3*r:3*r+3]
+            if tok == '---': continue
+            try:
+                w = int(tok[0]); mv = 1 if tok[1]=='R' else (-1 if tok[1]=='L' else 0)
+                ns = tok[2]
+                trans[(i,r)] = (w, mv, index[ns])
+            except Exception:
+                pass
+    tape = defaultdict(int)
+    head = 0
+    state = 0  # A
+    out = []
+    for t in range(H):
+        out.append(dict(tape))
+        if t == H-1: break
+        r = tape[head]
+        if (state, r) not in trans:
+            for _ in range(H-t-1):
+                out.append(dict(tape))
+            break
+        w, mv, ns = trans[(state, r)]
+        tape[head] = w
+        head += mv
+        state = ns
+    return out
+
+def search(target):
+    grid = _parse(target)
+    H = len(grid)
+    if H == 0:
+        return '0RA'
+    W = max(len(r) for r in grid)
+    for r in grid:
+        r.extend([0]*(W-len(r)))
+    n_trans = H-1
+    # diffs
+    halt_at = None
+    diffs = []
+    for t in range(n_trans):
+        d = [c for c in range(W) if grid[t][c] != grid[t+1][c]]
+        if len(d)==0 and halt_at is None:
+            halt_at = t
+        diffs.append(d)
+    T = halt_at if halt_at is not None else n_trans
+    if T <= 0:
+        return '0RA'
+    # require single-cell diffs for valid transitions
+    for t in range(T):
+        if len(diffs[t]) == 0:
+            return '0RA'
+        if len(diffs[t]) > 1:
+            # try first diff, continue (best effort)
+            pass
+    pos = [diffs[t][0] for t in range(T)]
+    r = [grid[t][pos[t]] for t in range(T)]
+    w = [grid[t+1][pos[t]] for t in range(T)]
+    mv = [0]*T
+    for t in range(T-1):
+        d = pos[t+1]-pos[t]
+        mv[t] = 1 if d>0 else (-1 if d<0 else -9)
+    mv[T-1] = -9
+
+    n = T
+    sid = [0]*n
+    prev = 0
+    for _ in range(n+5):
+        sig = {}
+        new = [0]*n
+        for t in range(n):
+            key = (sid[t], r[t], w[t], mv[t], sid[t+1] if t+1<n else -1)
+            if key not in sig: sig[key] = len(sig)
+            new[t] = sig[key]
+        cnt = len(sig)
+        if cnt == prev:
+            sid = new
+            break
+        prev = cnt
+        sid = new
+
+    # behavior
+    beh = {}
+    for t in range(n):
+        b = sid[t]
+        d = beh.setdefault(b, {})
+        rr = r[t]; ww = w[t]; mm = mv[t]; nb = sid[t+1] if t+1<n else None
+        if rr in d:
+            e = d[rr]
+            if e[1] == -9 and mm != -9: e[1] = mm
+            if nb is not None: e[2] = nb
+        else:
+            d[rr] = [ww, mm, nb]
+
+    distinct = []
+    for t in range(n):
+        if sid[t] not in distinct: distinct.append(sid[t])
+    letter = {sid[0]: 'A'}
+    for b in distinct:
+        if b not in letter:
+            letter[b] = chr(ord('B') + len(letter)-1)
+
+    trans = {}
+    for t in range(n):
+        b = sid[t]; L = letter[b]; rr = r[t]
+        e = beh[b][rr]
+        ww, mm, nb = e
+        Lnb = letter[nb] if nb is not None else None
+        key = (L, rr)
+        if key in trans:
+            cur = trans[key]
+            if cur[1] == -9 and mm != -9: cur[1] = mm
+            if cur[2] is None and Lnb is not None: cur[2] = Lnb
+        else:
+            trans[key] = [ww, mm, Lnb]
+
+    # resolve -9 moves and missing next states
+    for t in range(n):
+        b = sid[t]; L = letter[b]; rr = r[t]
+        if (L, rr) in trans and trans[(L,rr)][1] == -9:
+            # guess from any known move for same symbol; else default
+            trans[(L,rr)][1] = 1  # R default
+
+    parts = []
+    for b in distinct:
+        L = letter[b]
+        row = ''
+        for rr in (0,1):
+            key = (L, rr)
+            if key in trans:
+                ww, mm, Lnb = trans[key]
+                if Lnb is None:
+                    # fallback: stay in same state with some move
+                    row += f"{ww}{'R' if mm>0 else 'L'}{L}"
+                else:
+                    row += f"{ww}{'R' if mm>0 else 'L'}{Lnb}"
+            else:
+                row += '---'
+        parts.append(row)
+    return '_'.join(parts)
+```
+
+Wait `distinct` order and letter assignment: `letter` maps based on iteration; parts order follows distinct. State letters might not be in order but that's fine as long as string rows correspond to A,B,C,... in order! The machine parser expects row 0 = state A, row 1 = B, etc. So we must output rows sorted by letter, and the letters must be contiguous starting at A.
+
+Since we assign letters starting at A for sid[0], then B, C... in order of first occurrence in distinct (which is order of first occurrence in time trace), the letters used are A,B,C,... contiguous. But `distinct` order gives those letters. parts built by iterating distinct gives rows in that order: first element row corresponds to letter[distinct[0]] = 'A'. So parts[0] is A's row. Good, since distinct[0]=sid[0] mapped to A. And subsequent letters B, C... in distinct order. So concatenated string rows are in alphabetical order. 
+
+But wait: `letter[b] = chr(ord('B') + len(letter)-1)`. Initially len(letter)=1 (only A), so first new gets chr(ord('B')+0)='B'. Then len=2 -> 'C'. Good.
+
+However, could there be a block whose letter assigned later but appears earlier in `distinct`? No.
+
+One more check: `behh` for blocks that appear only as next states (sid[t+1] for some t but maybe never sid[t] as current?). Since n times, sid[t] for t=0..n-1 covers all roles? Block appearing only at t=n-1 (as current) is fine. A block appearing only as next state of some t means it's sid[t'] for t'=t+1 ≤ n-1. So appears as current at t'. So all blocks in distinct appear as current. Good.
+
+Now, is the last transition's next state nb = None (since t+1 = n out of range). So beh entry for block sid[n-1] symbol r[n-1] has nb None. Then in trans building, Lnb None -> fallback self-loop in row building: `row += f"{ww}{'R' if mm>0 else 'L'}{L}"`. But if the same (L,rr) occurred earlier with known nb, trans[(L,rr)] would have been updated with cur[2] from earlier occurrence (since we set `if cur[2] is None and Lnb is not None` only when later; but earlier occurrence processed first sets cur[2] to Lnb known). Actually iteration order: t=0 first, so earlier t processed first, setting cur[2]. For t=n-1, if key already in trans, we do `if cur[2] is None and Lnb is not None` — Lnb None so no update; cur[2] already set from earlier. Good. If only the last transition has this (L,rr), cur[2] None -> fallback self-loop.
+
+But hold on: if the same (L,rr) occurred earlier, then beh merged and mv -9 resolved (mm from earlier occurrence, since beh merges and sets e[1] if -9 and mm!=-9). The last transition's beh entry mm=-9, but e[1] might already be set from earlier. In trans building for t=n-1, e = beh[b][rr] gives mm=e[1] (resolved), and Lnb None. So key in trans maybe. Fine.
+
+Edge: last transition's (sid[n-1], r[n-1]) same as earlier (sid, r) => consistent.
+
+Alright. I'll also handle the case where mv[t] for t<T-1 computed as 0 (head didn't move) — impossible in TM (must move), so indicates target row diff not from single head step, or machine halted mid-row. If 0, we could mark transition undefined/halt. Minor.
+
+Let me also add the optional certificate? The signature returns str; optional dict maybe. I'll just return string.
+
+Given the harness "does not trust your score", returning machine string is key.
+
+Final answer with notes and one python block.
+
+I should double check the parsing of target: it may be passed as list of strings each 40 chars with '.' and '#'. My `_parse` treats any char not '#' as 0. Good.
+
+Also target could have trailing spaces? rstrip('\n') only; spaces would be treated as 0. Fine.
+
+I think this is the best I can do without executing. Let me also include a mirrored fallback? The note about mirrored machines maybe irrelevant to output format (string uses L/R explicitly, mirroring means maybe the target corresponds to a left-first machine). Our inference handles moves directly, so no need.
+
+Let me write final response.## Approach notes
+
+I reverse‑engineer directly from the **target tape itself** rather than guessing machines:
+
+1. **Extract the execution trace.** In a TM exactly one tape cell changes per step, so the symmetric difference of consecutive target rows is a singleton `p_t` (head position at step `t`). From that I get:
+   - `p_t` – head column,
+   - `r_t = tape[t][p_t]` – symbol read,
+   - `w_t = tape[t+1][p_t]` – symbol written,
+   - `mv_t = sign(p_{t+1} − p_t)` – direction moved (the last move is unobservable and is resolved by consistency).
+
+2. **Recover the state sequence.** A TM is a deterministic transducer, so two time indices `t, t′` in the same state must have identical `(read, write, move, next‑state)`. I run partition refinement over the trace to obtain the minimal consistent state labelling (equivalent to DFA minimisation for the observed input string).
+
+3. **Build the table.** Each state is emitted as two 3‑char tokens (read 0 and read 1); unobserved symbols become `---` (fewer defined transitions = better tie‑break). States are named `A, B, C…` in order of first use, with the state at time 0 forced to `A`.
+
+4. **Fallbacks.** If any row diff is not a singleton the code still emits the best trace‑consistent machine rather than crashing.
+
+```python
+import sys
+from collections import defaultdict
+
+def _parse(target):
+    if isinstance(target, str):
+        raw = target.split('\n')
+    else:
+        raw = list(target)
+    rows = []
+    for line in raw:
+        if line is None:
+            continue
+        line = line.rstrip('\n').rstrip('\r')
+        rows.append([1 if ch == '#' else 0 for ch in line])
+    return rows
+
+def _simulate(mach, H):
+    parts = mach.split('_')
+    n = len(parts)
+    index = {chr(ord('A') + i): i for i in range(n)}
+    trans = {}
+    for i, p in enumerate(parts):
+        if len(p) < 6:
+            continue
+        for r in (0, 1):
+            tok = p[3 * r:3 * r + 3]
+            if tok == '---':
+                continue
+            try:
+                w = int(tok[0])
+                mv = 1 if tok[1] == 'R' else (-1 if tok[1] == 'L' else 0)
+                ns = tok[2]
+                trans[(i, r)] = (w, mv, index[ns])
+            except Exception:
+                pass
+    tape = defaultdict(int)
+    head = 0
+    state = 0
+    out = []
+    for t in range(H):
+        out.append(dict(tape))
+        if t == H - 1:
+            break
+        r = tape[head]
+        if (state, r) not in trans:
+            for _ in range(H - t - 1):
+                out.append(dict(tape))
+            break
+        w, mv, ns = trans[(state, r)]
+        tape[head] = w
+        head += mv
+        state = ns
+    return out
+
+def search(target):
+    grid = _parse(target)
+    H = len(grid)
+    if H == 0:
+        return '0RA'
+    W = max(len(r) for r in grid)
+    for r in grid:
+        r.extend([0] * (W - len(r)))
+    n_trans = H - 1
+    if n_trans <= 0:
+        return '0RA'
+
+    halt_at = None
+    diffs = []
+    for t in range(n_trans):
+        d = [c for c in range(W) if grid[t][c] != grid[t + 1][c]]
+        if len(d) == 0 and halt_at is None:
+            halt_at = t
+        diffs.append(d)
+    T = halt_at if halt_at is not None else n_trans
+    if T <= 0:
+        return '0RA'
+
+    pos = []
+    for t in range(T):
+        if len(diffs[t]) == 0:
+            return '0RA'
+        pos.append(diffs[t][0])
+
+    r = [grid[t][pos[t]] for t in range(T)]
+    w = [grid[t + 1][pos[t]] for t in range(T)]
+    mv = [0] * T
+    for t in range(T - 1):
+        d = pos[t + 1] - pos[t]
+        mv[t] = 1 if d > 0 else (-1 if d < 0 else -9)
+    mv[T - 1] = -9
+
+    n = T
+    sid = [0] * n
+    prev = 0
+    for _ in range(n + 5):
+        sig = {}
+        new = [0] * n
+        for t in range(n):
+            key = (sid[t], r[t], w[t], mv[t], sid[t + 1] if t + 1 < n else -1)
+            if key not in sig:
+                sig[key] = len(sig)
+            new[t] = sig[key]
+        cnt = len(sig)
+        if cnt == prev:
+            sid = new
+            break
+        prev = cnt
+        sid = new
+
+    beh = {}
+    for t in range(n):
+        b = sid[t]
+        d = beh.setdefault(b, {})
+        rr, ww, mm = r[t], w[t], mv[t]
+        nb = sid[t + 1] if t + 1 < n else None
+        if rr in d:
+            e = d[rr]
+            if e[1] == -9 and mm != -9:
+                e[1] = mm
+            if nb is not None:
+                e[2] = nb
+        else:
+            d[rr] = [ww, mm, nb]
+
+    distinct = []
+    for t in range(n):
+        if sid[t] not in distinct:
+            distinct.append(sid[t])
+    letter = {sid[0]: 'A'}
+    for b in distinct:
+        if b not in letter:
+            letter[b] = chr(ord('B') + len(letter) - 1)
+
+    trans = {}
+    for t in range(n):
+        b = sid[t]
+        L = letter[b]
+        rr = r[t]
+        e = beh[b][rr]
+        ww, mm, nb = e
+        Lnb = letter[nb] if nb is not None else None
+        key = (L, rr)
+        if key in trans:
+            cur = trans[key]
+            if cur[1] == -9 and mm != -9:
+                cur[1] = mm
+            if cur[2] is None and Lnb is not None:
+                cur[2] = Lnb
+        else:
+            trans[key] = [ww, mm, Lnb]
+
+    for L in letter.values():
+        for rr in (0, 1):
+            if (L, rr) in trans and trans[(L, rr)][1] == -9:
+                trans[(L, rr)][1] = 1
+
+    parts = []
+    for b in distinct:
+        L = letter[b]
+        row = ''
+        for rr in (0, 1):
+            key = (L, rr)
+            if key in trans:
+                ww, mm, Lnb = trans[key]
+                if Lnb is None:
+                    row += "%d%s%s" % (ww, 'R' if mm > 0 else 'L', L)
+                else:
+                    row += "%d%s%s" % (ww, 'R' if mm > 0 else 'L', Lnb)
+            else:
+                row += '---'
+        parts.append(row)
+    return '_'.join(parts)
+``````python
+import sys
+from collections import defaultdict
+
+def search(target):
+    # --- parse target into a binary grid ---
+    if isinstance(target, str):
+        raw = target.split('\n')
+    else:
+        raw = list(target)
+    grid = []
+    for line in raw:
+        if line is None:
+            continue
+        line = line.rstrip('\n').rstrip('\r')
+        grid.append([1 if ch == '#' else 0 for ch in line])
+    H = len(grid)
+    if H == 0:
+        return '0RA'
+    W = max(len(r) for r in grid)
+    for r in grid:
+        r.extend([0] * (W - len(r)))
+    n_trans = H - 1
+    if n_trans <= 0:
+        return '0RA'
+
+    # --- extract execution trace from consecutive-row diffs ---
+    halt_at = None
+    diffs = []
+    for t in range(n_trans):
+        d = [c for c in range(W) if grid[t][c] != grid[t + 1][c]]
+        if len(d) == 0 and halt_at is None:
+            halt_at = t
+        diffs.append(d)
+    T = halt_at if halt_at is not None else n_trans
+    if T <= 0:
+        return '0RA'
+
+    pos = []
+    for t in range(T):
+        if len(diffs[t]) == 0:
+            return '0RA'
+        pos.append(diffs[t][0])
+
+    r = [grid[t][pos[t]] for t in range(T)]
+    w = [grid[t + 1][pos[t]] for t in range(T)]
+    mv = [0] * T
+    for t in range(T - 1):
+        d = pos[t + 1] - pos[t]
+        mv[t] = 1 if d > 0 else (-1 if d < 0 else -9)
+    mv[T - 1] = -9  # final move unobservable
+
+    # --- partition-refine states so each (state, symbol) is consistent ---
+    n = T
+    sid = [0] * n
+    prev = 0
+    for _ in range(n + 5):
+        sig = {}
+        new = [0] * n
+        for t in range(n):
+            key = (sid[t], r[t], w[t], mv[t], sid[t + 1] if t + 1 < n else -1)
+            if key not in sig:
+                sig[key] = len(sig)
+            new[t] = sig[key]
+        cnt = len(sig)
+        if cnt == prev:
+            sid = new
+            break
+        prev = cnt
+        sid = new
+
+    # --- collect per-state behaviour ---
+    beh = {}
+    for t in range(n):
+        b = sid[t]
+        d = beh.setdefault(b, {})
+        rr, ww, mm = r[t], w[t], mv[t]
+        nb = sid[t + 1] if t + 1 < n else None
+        if rr in d:
+            e = d[rr]
+            if e[1] == -9 and mm != -9:
+                e[1] = mm
+            if nb is not None:
+                e[2] = nb
+        else:
+            d[rr] = [ww, mm, nb]
+
+    distinct = []
+    for t in range(n):
+        if sid[t] not in distinct:
+            distinct.append(sid[t])
+    letter = {sid[0]: 'A'}
+    for b in distinct:
+        if b not in letter:
+            letter[b] = chr(ord('B') + len(letter) - 1)
+
+    trans = {}
+    for t in range(n):
+        b = sid[t]
+        L = letter[b]
+        rr = r[t]
+        e = beh[b][rr]
+        ww, mm, nb = e
+        Lnb = letter[nb] if nb is not None else None
+        key = (L, rr)
+        if key in trans:
+            cur = trans[key]
+            if cur[1] == -9 and mm != -9:
+                cur[1] = mm
+            if cur[2] is None and Lnb is not None:
+                cur[2] = Lnb
+        else:
+            trans[key] = [ww, mm, Lnb]
+
+    for L in letter.values():
+        for rr in (0, 1):
+            if (L, rr) in trans and trans[(L, rr)][1] == -9:
+                trans[(L, rr)][1] = 1
+
+    # --- serialise state rows in A,B,C... order ---
+    parts = []
+    for b in distinct:
+        L = letter[b]
+        row = ''
+        for rr in (0, 1):
+            key = (L, rr)
+            if key in trans:
+                ww, mm, Lnb = trans[key]
+                if Lnb is None:
+                    row += "%d%s%s" % (ww, 'R' if mm > 0 else 'L', L)
+                else:
+                    row += "%d%s%s" % (ww, 'R' if mm > 0 else 'L', Lnb)
+            else:
+                row += '---'
+        parts.append(row)
+    return '_'.join(parts)
+```

@@ -1,0 +1,131 @@
+```
+search(target: list[str]) -> str
+```
+
+search(target):
+    h = len(target)
+    w = max(len(r) for r in target)
+
+    # Reconstruct the target as a binary grid with a symmetric coordinate origin.
+    grid = [[0] * (w + 40) for _ in range(h)]
+    off = 20
+    for i, row in enumerate(target):
+        for j, ch in enumerate(row):
+            if ch == '#':
+                grid[i][off + j] = 1
+
+    rows = [[0] * (w + 40) for _ in range(h + 1)]
+    rows[0] = [0] * (w + 40)
+    for t in range(h):
+        for j in range(w + 40):
+            rows[t + 1][j] = grid[t][j]
+
+    # --- Infer write bits: the tape between step t and t+1. ---
+    # Tape after t+1 steps is determined from tape after t steps by exactly one
+    # write at the head position, plus a move. We can therefore infer each
+    # write bit and each move direction from adjacent rows, and the head
+    # position is where the two rows differ (or the single surviving 1).
+    writes = []
+    head_seq = []
+    for t in range(h - 1):
+        prev = rows[t]
+        nxt = rows[t + 1]
+        diff = [j for j in range(w + 40) if prev[j] != nxt[j]]
+        if len(diff) == 1:
+            j = diff[0]
+            if prev[j] == 1 and nxt[j] == 0:
+                # write 1 -> 0 at j, could have moved L (head left of j)
+                head_seq.append('L')
+                writes.append(0)
+                head_pos = j - 1
+            else:
+                head_seq.append('R')
+                writes.append(1)
+                head_pos = j + 1
+            head_seq[-1] = 'L' if head_seq[-1] == 'L' else 'R'
+        else:
+            # One cell changed; infer by comparing after-move cells.
+            writes.append(0)
+            head_seq.append('L')
+            head_pos = 0
+    writes.append(0)
+    if not head_seq:
+        return '0LA_0LA'
+
+    tape = [0] * (w + 60)
+    tape_off = 30
+    head = tape_off
+    state_counts = {}
+
+    # --- Infer transitions: a state is a (write,direction) signature pattern. ---
+    # We assign a fresh state whenever the inferred (write,dir) differs from the
+    # previous step; repeated patterns get reused.
+    signature = []
+    sig_to_state = {}
+    transitions = []
+    cur_state = 'A'
+    rows_needed = h
+
+    t2 = 0
+    for t in range(rows_needed - 1):
+        # observed read bit at current head
+        j = head
+        read_bit = tape[j]
+        key = (read_bit, writes[t], head_seq[t])
+        if key not in sig_to_state:
+            new = chr(ord('A') + len(sig_to_state) + 1)
+            if len(sig_to_state) >= 25:
+                new = '?'
+            sig_to_state[key] = new
+        nxt_state = sig_to_state[key]
+
+        # write
+        tape[j] = writes[t]
+        # move
+        if head_seq[t] == 'L':
+            head -= 1
+        else:
+            head += 1
+
+        # next read bit will come from next tape; but our tape is already the
+        # next row's tape since we wrote it above.
+        next_read = tape[head]
+
+        transitions.append((cur_state, read_bit, writes[t], head_seq[t],
+                            nxt_state, next_read))
+        cur_state = nxt_state
+        t2 += 1
+
+    # Build machine string from transitions; undefined entries halts ('---'), or
+    # previously seen entries for the start state.
+    # Rows are states; first two entries are read 0 and read 1.
+    defined = {}
+    states = []
+    def add(s):
+        if s not in states:
+            states.append(s)
+    for tr in transitions:
+        add(tr[0]); add(tr[4])
+    add('A')
+
+    def emit(s):
+        # find all transitions from s
+        outs = [None, None]
+        for (q, rb, wt, mv, ns, _nr) in transitions:
+            if q == s:
+                token = str(wt) + mv + ns
+                outs[rb] = token
+        line = ''
+        for i in range(2):
+            if outs[i] is None:
+                line += '---'
+            else:
+                line += outs[i]
+        return line
+
+    machine = '_'.join(emit(s) for s in states)
+    if len(machine) > 256:
+        return machine[:256]
+
+    return machine
+```

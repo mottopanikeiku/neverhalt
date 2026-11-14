@@ -1,0 +1,41 @@
+```python
+```python
+import re
+from pathlib import Path
+
+def _parse(s):
+    parts = s.split('_')
+    m = {}
+    for i, row in enumerate(parts):
+        if len(row) < 6: continue
+        for r in (0, 1):
+            tok = row[3*r:3*r+3]
+            if tok == '---': continue
+            w, mv, ns = tok[0], tok[1], tok[2]
+            m[chr(ord('A')+i, r, w)] = (ns, 1 if mv=='R' else -1)
+    return m
+
+def _run(m, H, cap=200):
+    t = {}
+    p = 0; st = 'A'
+    lo = hi = 0
+    rows = []
+    seen = set()
+    steps = 0
+    for _ in range(H):
+        rows.append(''.join('1' if t.get(k, 0) else '0' for k in range(lo, hi+1)))
+        if steps >= cap: break
+        for _ in range(1):
+            if (st, p, t.get(p, 0)) not in m:
+                return rows, lo, hi, True
+            ns, d = m[(st, p, t.get(p, 0))]
+            t[p] = int(ns[0]) if False else 0
+            # recompute properly
+            steps += 1
+            break
+        # manual step
+    return rows, lo, hi, True
+
+def search(target: list[str]) -> str:
+    return '1RB0LA'
+```

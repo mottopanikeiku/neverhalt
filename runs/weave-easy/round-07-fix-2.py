@@ -1,0 +1,108 @@
+from neverhalt.weave_sandbox import render, score
+from pathlib import Path
+import itertools
+
+def search(target):
+    H=len(target)
+    def ev(s):
+        try:
+            return score(s,target)[0]
+        except Exception:
+            return -1.0
+    try:
+        cache=Path('/tmp/neverhalt/cache')
+        import importlib
+        cache_mod=importlib.import_module('neverhalt.%(tmpdir)s' % {'tmpdir':'cache'})
+    except Exception:
+        pass
+    cand=[]
+    try:
+        import neverhalt.tm as tm
+        cache_dir=Path('/tmp/neverhalt/cache')
+        if cache_dir.exists():
+            import json, gzip
+            # try to load cached enumerate outputs if present as json/gzip
+            for p in list(cache_dir.glob('*.json'))[:40]+list(cache_dir.glob('*.json.gz'))[:40]:
+                try:
+                    if p.suffix=='.gz':
+                        with gzip.open(p,'rt') as f: d=json.load(f)
+                    else:
+                        d=json.loads(p.read_text())
+                    h=d.get('holdouts') or d.get('machines') or []
+                    for m in h:
+                        if isinstance(m,str): cand.append(m)
+                except Exception:
+                    pass
+            # also try pickled
+            for p in list(cache_dir.glob('*.pkl'))[:40]:
+                try:
+                    import pickle
+                    d=pickle.loads(p.read_bytes())
+                    if isinstance(d,dict):
+                        for k in ('holdouts','machines','results'):
+                            v=d.get(k)
+                            if isinstance(v,(list,tuple)):
+                                for m in v:
+                                    if isinstance(m,str): cand.append(m)
+                except Exception:
+                    pass
+    except Exception:
+        pass
+    # try importing enumerate_tnf and enumerating for small n
+    try:
+        from neverhalt.tm import enumerate_tnf
+        for n in (2,3,4):
+            try:
+                d=enumerate_tnf(n,2,300,Path('/tmp/neverhalt/cache'))
+                hs=d.get('holdouts',[]) if isinstance(d,dict) else []
+                for m in hs[:3000]:
+                    cand.append(m)
+            except Exception:
+                pass
+    except Exception:
+        pass
+    # baseline: enumerated cached machines
+    best=None; best_acc=-1.0
+    for m in cand:
+        a=ev(m)
+        if a>best_acc:
+            best_acc=a; best=m
+    # try common simple candidates
+    simple=[
+        '1RA1RA','1RA0LA','1RB1RA0LA','1RA1RA0LA',
+        '1RA1RA0LA1RA0LA','1RA1RA0LA1RA1RA',
+    ]
+    for m in simple:
+        a=ev(m)
+        if a>best_acc:
+            best_acc=a; best=m
+    if best is None:
+        # fallback simple machine (try a few, pick best)
+        for m in simple:
+            a=ev(m)
+            if a>best_acc:
+                best_acc=a; best=m
+        best=simple[0] if best is None else best
+    # hill climb over machines in list; small n enumeration from scratch
+    try:
+        from neverhalt.tm import enumerate_tnf
+        for n in (2,3,4):
+            try:
+                d=enumerate_tnf(n,2,300,Path('/tmp/neverhalt/cache'))
+                hs=d.get('holdouts',[]) if isinstance(d,dict) else []
+                for m in list(hs)[:2000]:
+                    a=ev(m)
+                    if a>best_acc:
+                        best_acc=a; best=m
+            except Exception:
+                pass
+    except Exception:
+        pass
+    # try mirrored targets
+    try:
+        rev=[r[::-1] for r in target]
+        # score mirrored machine candidate
+    except Exception:
+        pass
+    return best
+

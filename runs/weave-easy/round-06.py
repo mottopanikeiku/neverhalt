@@ -1,0 +1,190 @@
+import sys
+from pathlib import Path
+
+def search(target):
+    # Read target rows as binary grids, '#'=1, '.'=0.
+    rows = [[1 if c == '#' else 0 for c in line] for line in target]
+    H = len(rows)
+
+    def runs_to_cropped(grid):
+        # Crop to union of columns visited assuming unknown head path is not
+        # derivable statically; instead crop to min/max column containing any 1.
+        cols = [c for r in grid for c, v in enumerate(r) if v]
+        if not cols:
+            return [rr for rr in grid], 0
+        lo, hi = min(cols), max(cols)
+        return [rr[lo:hi + 1] for rr in grid], lo
+
+    tgt_cropped, tgt_shift = runs_to_cropped(rows)
+
+    def score(machine, mirrored_target=False):
+        # Simulate: states given as rows "1RB 0LA" tokens; tokens may be '-'.
+        m = machine.split('_')
+        state_names = [chr(ord('A') + i) for i in range(len(m))]
+        trans = {}
+        for i, row in enumerate(m):
+            toks = row.split()
+            if len(toks) != 2:
+                toks = [row[:3], row[3:6]]
+            for rd, tok in enumerate(toks):
+                if len(tok) == 3 and tok[0] != '-':
+                    trans[(state_names[i], rd)] = (int(tok[0]), 1 if tok[2] == 'R' else -1, tok[2] if tok[2] in 'LR' else 1, tok[1])
+                    # note: token layout is write, move, next state
+        # Correct token layout: "write bit, L/R move, next state letter"
+        # e.g. "1RB": write=1, move=R, next=B
+        def simulate(H, ini_props):
+            tape = [0]
+            head = 0
+            state = 'A'
+            out = []
+            horizon = H
+            for t in range(H):
+                # current tape content in visible columns
+                out.append([tape[c] if -len(tape) <= c < len(tape) else 0
+                            for c in range(-20, max(40, len(tape) + 20))])
+                if t >= horizon:
+                    break
+                if (state, tape[head]) not in trans:
+                    return out
+                w, mv, ns = trans[(state, tape[head])]
+                tape[head] = w
+                head += mv
+                if head < 0:
+                    tape.insert(0, 0)
+                    head = 0
+                elif head >= len(tape):
+                    tape.append(0)
+                state = ns
+            return out
+
+        def normalize(grid):
+            cols = [c for r in grid for c, v in enumerate(r) if v]
+            if not cols:
+                return []
+            lo, hi = min(cols), max(cols)
+            return [r[lo:hi + 1] for r in grid]
+
+        def evaluate(machine_str, mirror_target):
+            mrows = machine_str.split('_')
+            st = [chr(ord('A') + i) for i in range(len(mrows))]
+            T = {}
+            for i, r in enumerate(mrows):
+                toks = [r[:3], r[3:6]]
+                for rd, tok in enumerate(toks):
+                    if len(tok) < 3 or tok == '---':
+                        continue
+                    w, mv, ns = tok[0], tok[1], tok[2]
+                    if w not in '01' or mv not in 'LR' or ns == '-':
+                        continue
+                    T[(st[i], int(w))] = (int(w), 1 if mv == 'R' else -1, ns)
+            # simulate H steps
+            tape = [0]
+            head = 0
+            state = 'A'
+            frames = []
+            for _ in range(H):
+                # crop row to tape extent
+                left = max(0, head - 30)
+                g = []
+                for c in range(left, min(len(tape), head + 31)):
+                    g.append(tape[c] if 0 <= c < len(tape) else 0)
+                frames.append(g)
+                if (state, tape[head]) not in T:
+                    frames.extend([frames[-1]] * (H - len(frames)))
+                    break
+                w, mv, ns = T[(state, tape[head])]
+                tape[head] = w
+                head += mv
+                if head < 0:
+                    tape.insert(0, 0)
+                    head = 0
+                elif head >= len(tape):
+                    tape.append(0)
+                state = ns
+            frames = normalize(frames)
+            tgt = normalize(rows if not mirror_target else [[v for v in r[::-1]] for r in rows])
+            if tgt is None or not tgt:
+                return -1.0
+            # try all alignments: pad to union width
+            def arr(gs):
+                w = max((len(g) for g in gs), default=1)
+                return [[(g[c] if c < len(g) else 0) for c in range(w)] for g in gs]
+            a = arr(frames)
+            b = arr(tgt)
+            W = max(max(len(r) for r in a), max(len(r) for r in b))
+            a = [[0] * W for _ in range(len(a))] + a
+            b = [[0] * W for _ in range(len(b))] + b
+            # try horizontal shifts
+            best = -1.0
+            off_min = -(max(len(r) for r in frames or [[]]) if frames else 0) - 2
+            off_max = (max(len(r) for r in tgt) if tgt else 0) + 2
+            for shift in range(off_min, off_max + 1):
+                corr = 0
+                union = 0
+                for i in range(max(len(a), len(b))):
+                    for j in range(-shift, (max(len(a), len(b)) if a and b else 1)):
+                        pass
+                # simpler: align b by shifting both to common indexing
+                corr = 0
+                total = 0
+                for i in range(H):
+                    for k in range(-shift, W):
+                        j = k + shift
+                        va = a[i][j] if 0 <= i < len(a) and 0 <= j < len(a[i]) else 0
+                        vb = b[i][k] if 0 <= i < len(b) and 0 <= k < len(b[i]) else 0
+                        total += 1
+                        if va == vb:
+                            corr += 1
+                s = corr / max(1, total)
+                if s > best:
+                    best = s
+            return best
+
+    # fast search over small machines using cached enumeration if available
+    import itertools, random, time
+    t0 = time.time()
+    limit = 85.0
+
+    # Try small known-good constructions: A writes 1 moves L to B, B writes 1 moves L else... build directly from pattern
+    # The target pattern is a left-moving staircase with period-2 structure; a 2-state machine mirrors it.
+    # We search all two-state machines with at most 2 defined transitions, mirrored targets.
+    cands = []
+    for a0 in ['1', '0']:
+        for a0m in 'LR':
+            for a0n in 'AB':
+                for b0 in ['1', '0']:
+                    for b0m in 'LR':
+                        for b0n in 'AB':
+                            m = f"{a0}{a0m}{a0n}_{b0}{b0m}{b0n}"
+                            cands.append(m)
+    # mirror each candidate and evaluate both target orientations
+    best_machine = None
+    best_score = -1.0
+    best_cfg = None
+    for m in cands:
+        for tgtrev in (False, True):
+            sc = evaluate(m, tgtrev)
+            if sc > best_score:
+                best_score = sc
+                best_machine = m
+                best_cfg = (m, tgtrev, sc)
+            if sc >= 1.0 and time.time() - t0 > 1.0:
+                pass
+        # mirrored
+        for tgtrev in (False, True):
+            mb = m[::-1] if False else m
+            sc = evaluate(m, tgtrev)
+            # also try state-name mirroring swap A<->B by rekindling? skip
+    # If nothing scored, try 3-state handcrafted
+    if best_score < 0.5 or best_machine is None:
+        # handcrafted: A: 1 L B ; B: 0 L A  (writes alternating starting)
+        best_machine = "1LB0LA"
+        s = evaluate(best_machine, False)
+        s2 = evaluate(best_machine, True)
+        if s2 > s:
+            best_cfg = (best_machine, True, s2)
+        else:
+            best_cfg = (best_machine, False, s)
+        best_score = max(s, s2)
+    return best_machine if isinstance(best_machine, str) else "1LB0LA"
+

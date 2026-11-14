@@ -1,0 +1,39 @@
+{
+   "creator": "Yosys 0.71 (git sha1 b4c586fd3, Release, Clang /workspace/YoWASP/yosys/wasi-sdk-33.0-x86_64-linux/share/cmake/../..//bin/clang++ 22.1.0)",
+   "invocation": "stat -json ",
+   "modules": {
+      "\\tm_comb": {
+         "num_wires":         6,
+         "num_wire_bits":     6,
+         "num_pub_wires":     6,
+         "num_pub_wire_bits": 6,
+         "num_ports":         5,
+         "num_port_bits":     5,
+         "num_memories":      0,
+         "num_memory_bits":   0,
+         "num_processes":     0,
+         "num_cells":         0,
+         "num_submodules":       0,
+         "num_cells_by_type": {
+
+         }
+      }
+   },
+      "design": {
+         "num_wires":         6,
+         "num_wire_bits":     6,
+         "num_pub_wires":     6,
+         "num_pub_wire_bits": 6,
+         "num_ports":         5,
+         "num_port_bits":     5,
+         "num_memories":      0,
+         "num_memory_bits":   0,
+         "num_processes":     0,
+         "num_cells":         0,
+         "num_submodules":       0,
+         "num_cells_by_type": {
+
+         }
+      }
+}
+

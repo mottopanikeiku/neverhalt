@@ -1,0 +1,8 @@
+.env
+cache/
+_scratch/
+__pycache__/
+*.pyc
+runs/_*/
+runs/*.log
+docs/media/wall-raw.mp4

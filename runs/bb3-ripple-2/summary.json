@@ -1,0 +1,103 @@
+{
+ "name": "bb3-ripple-2",
+ "n": 3,
+ "k": 2,
+ "max_steps": 300,
+ "model": "ricursiveai/ripple-65b-preview",
+ "theorem": null,
+ "champion": {
+  "tm": "1RB---_1LB0RC_1LC1LA",
+  "steps": 21
+ },
+ "enumerated": 5415,
+ "halting": 1772,
+ "holdouts_initial": 3643,
+ "unproven": [
+  "0RB---_0LC1RB_1LA1LC",
+  "0RB---_1LC1RB_1LA1LC",
+  "0RB0LA_1LA1RC_1RB---",
+  "0RB0LA_1RC---_1LA1RB",
+  "0RB0LB_1LA0RC_1RB---",
+  "0RB0LC_0LC1RA_1LA---",
+  "0RB0LC_1RC1RA_1LA---",
+  "0RB1LA_1RC1RB_0LA---",
+  "0RB1LA_1RC1RB_1LA---",
+  "0RB1LC_1RC---_0LA0RB",
+  "1RB---_0LC0RA_0RA1LB",
+  "1RB---_0LC0RA_1LA1LB",
+  "1RB---_0LC0RB_1LC1LA",
+  "1RB---_0LC1RB_1LA1LC",
+  "1RB---_0RC0RB_1LC1LA",
+  "1RB---_1LC0RA_0RB0LB",
+  "1RB---_1LC0RA_1RB0LB",
+  "1RB---_1LC0RB_1LB1LA",
+  "1RB---_1LC0RB_1LC1LA",
+  "1RB---_1LC1RA_0RA0LC",
+  "1RB---_1LC1RB_1LA1LC",
+  "1RB0LB_1LA0RC_1RB---",
+  "1RB0LB_1LC1RB_---1LA",
+  "1RB0LC_0LA0RA_1LA---",
+  "1RB0LC_0LC1RA_---1LA",
+  "1RB0LC_1LA0RA_1LA---",
+  "1RB0LC_1LB1RA_---1LA",
+  "1RB1LA_1LA1RC_---1RB",
+  "1RB1LA_1RC1RB_0LA---",
+  "1RB1LA_1RC1RB_1LA---",
+  "1RB1LC_0LA0RB_1LA---",
+  "1RB1LC_1LC1RB_---1LA",
+  "1RB1RA_0LC---_0RA1LC",
+  "1RB1RA_0LC---_1RA1LC",
+  "1RB1RA_1LC---_0RA1LC",
+  "1RB1RA_1LC---_1RA1LC",
+  "1RB1RC_1LC---_0RA0LB"
+ ],
+ "by_kind": {
+  "cycle": 526,
+  "tcycle": 3025,
+  "cps": 55
+ },
+ "rounds": [
+  {
+   "round": 1,
+   "name": "round 1 (replayed)",
+   "proved": 3551
+  },
+  {
+   "round": 2,
+   "name": "window3",
+   "proved": 0
+  },
+  {
+   "round": 3,
+   "name": "cps_ngram",
+   "proved": 55
+  },
+  {
+   "round": 4,
+   "name": "tcycle4",
+   "proved": 0
+  },
+  {
+   "round": 5,
+   "name": "counter_pair",
+   "proved": 0
+  },
+  {
+   "round": 6,
+   "name": "tcycle_wide",
+   "proved": 0
+  },
+  {
+   "round": 7,
+   "name": "tcycle_wide",
+   "proved": 0
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 46658,
+  "completion_tokens": 42824,
+  "cost_usd": 0.0338,
+  "seconds": 777.2,
+  "calls": 8
+ }
+}

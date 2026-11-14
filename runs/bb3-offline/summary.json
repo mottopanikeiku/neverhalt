@@ -1,0 +1,50 @@
+{
+ "name": "bb3-offline",
+ "n": 3,
+ "k": 2,
+ "max_steps": 300,
+ "model": "offline reference deciders (no model)",
+ "theorem": "BB(3) = 21",
+ "champion": {
+  "tm": "1RB---_1LB0RC_1LC1LA",
+  "steps": 21
+ },
+ "enumerated": 5415,
+ "halting": 1772,
+ "holdouts_initial": 3643,
+ "unproven": [],
+ "by_kind": {
+  "cycle": 526,
+  "tcycle": 3025,
+  "cps": 92
+ },
+ "rounds": [
+  {
+   "round": 1,
+   "name": "cyclers",
+   "proved": 526
+  },
+  {
+   "round": 2,
+   "name": "translated cyclers",
+   "proved": 3025
+  },
+  {
+   "round": 3,
+   "name": "n-gram closed sets",
+   "proved": 79
+  },
+  {
+   "round": 4,
+   "name": "small automata search",
+   "proved": 13
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 0,
+  "completion_tokens": 0,
+  "cost_usd": 0.0,
+  "seconds": 0.0,
+  "calls": 0
+ }
+}
